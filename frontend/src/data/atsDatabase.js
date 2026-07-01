@@ -1,0 +1,460 @@
+export const atsFormattingChecks = {
+  "Junior React Developer": [
+    "Education Section - Properly formatted with degree, institution, and year",
+    "Skills Section - Well-organized with frontend technologies listed first",
+    "Experience Section - Clear bullet points with action verbs",
+    "Text Parsability - Clean formatting with consistent font and spacing",
+    "Contact Information - Complete with email, phone, and location",
+    "Project Section - Includes technologies used and project outcomes",
+    "Resume Length - Appropriate for 1-2 years experience",
+    "Keywords - Contains React, JavaScript, HTML, CSS keywords",
+    "Action Verbs - Uses 'Built', 'Developed', 'Created' effectively",
+    "Quantifiable Achievements - Limited, needs more metrics"
+  ],
+  "Mid React Developer": [
+    "Technical Skills - Comprehensive with React, TypeScript, Redux listed",
+    "Experience Section - Quantified achievements with metrics",
+    "Education Section - Complete with relevant coursework",
+    "Projects - Shows complexity and real-world impact",
+    "ATS Keywords - Strong presence of React, TypeScript, Redux, Next.js",
+    "Text Parsability - Well-structured with clear hierarchy",
+    "Action Verbs - Strong verbs like 'Led', 'Implemented', 'Optimized'",
+    "Professional Summary - Concise and relevant",
+    "Certifications - AWS Certified Developer listed",
+    "GitHub Link - Included for code review"
+  ],
+  "Senior React Developer": [
+    "Architecture Experience - Shows system design and scalability",
+    "Leadership Experience - Mentorship and team lead roles highlighted",
+    "Technical Skills - Advanced with Next.js, GraphQL, TypeScript",
+    "Quantified Achievements - Metrics clearly stated (performance, scale)",
+    "ATS Keywords - Comprehensive coverage of React ecosystem",
+    "Professional Summary - Executive-level summary of expertise",
+    "Education Section - Graduate degree with specialization",
+    "Projects - Enterprise-level projects with measurable outcomes",
+    "Certifications - Multiple relevant certifications",
+    "Text Parsability - Excellent formatting with professional layout"
+  ],
+  "React Native Developer": [
+    "Mobile Experience - iOS/Android development experience highlighted",
+    "Technical Skills - React Native, Expo, Native Modules listed",
+    "App Store/Play Store Links - Published apps mentioned",
+    "Mobile-Specific Keywords - Push notifications, deep linking, camera",
+    "Experience Section - Mobile development at scale",
+    "Education Section - Computer Science or related degree",
+    "Action Verbs - 'Built', 'Deployed', 'Optimized' for mobile",
+    "Cross-Platform Experience - Android and iOS expertise",
+    "Certifications - Mobile development certifications",
+    "Text Parsability - Mobile-focused resume structure"
+  ],
+  "Angular Developer": [
+    "Technical Skills - Angular, TypeScript, RxJS, NgRx listed",
+    "Enterprise Experience - Large-scale applications highlighted",
+    "Experience Section - Quantified achievements with enterprise impact",
+    "ATS Keywords - Angular, TypeScript, NgRx, RxJS presence",
+    "Education Section - Computer Science or related degree",
+    "Projects - Enterprise applications with real-world impact",
+    "Text Parsability - Professional, enterprise-ready formatting",
+    "Action Verbs - Strong, technical action verbs used",
+    "Certifications - Angular Certified Developer listed",
+    "GitHub/Portfolio - Quality examples linked"
+  ],
+  "Vue.js Developer": [
+    "Technical Skills - Vue.js, Nuxt.js, Vuex/Pinia listed",
+    "Experience Section - Vue.js development experience highlighted",
+    "ATS Keywords - Vue, Nuxt, JavaScript, TypeScript presence",
+    "Projects - Vue.js applications with documentation",
+    "Education Section - Relevant degree and coursework",
+    "Text Parsability - Clean, modern formatting",
+    "Action Verbs - Effective use of action verbs",
+    "Certifications - Vue.js certifications if applicable",
+    "GitHub - Active Vue.js contributions"
+  ],
+  "Frontend Architect": [
+    "Architecture Experience - Frontend architecture and system design",
+    "Technical Leadership - Team leadership and mentorship highlighted",
+    "Advanced Technical Skills - Micro-frontend, performance optimization",
+    "ATS Keywords - Architecture, system design, scalability keywords",
+    "Education Section - Advanced degree with specialization",
+    "Projects - Enterprise architecture projects with scale",
+    "Text Parsability - Executive-level formatting",
+    "Quantified Achievements - Metrics on impact and scale",
+    "Certifications - Cloud and architecture certifications",
+    "Thought Leadership - Blogs, talks, contributions listed"
+  ],
+  "Java/Spring Boot Developer": [
+    "Technical Skills - Java, Spring Boot, Microservices listed",
+    "Experience Section - Backend development with Spring framework",
+    "Projects - Microservices, REST APIs, database integration",
+    "ATS Keywords - Java, Spring Boot, JPA, Microservices presence",
+    "Database Experience - SQL and NoSQL databases highlighted",
+    "Education Section - Computer Science with relevant coursework",
+    "Text Parsability - Technical resume with clear structure",
+    "Action Verbs - 'Built', 'Designed', 'Implemented' used effectively",
+    "Certifications - Java certified, AWS/Azure certifications",
+    "System Design - Architecture and design patterns mentioned"
+  ],
+  "Python/Django Developer": [
+    "Technical Skills - Python, Django, Django REST Framework listed",
+    "Experience Section - Web development with Django stack",
+    "Projects - APIs, web applications with Django",
+    "ATS Keywords - Python, Django, REST API, PostgreSQL presence",
+    "Education Section - CS or Data Science background",
+    "Text Parsability - Clear and well-structured",
+    "Action Verbs - 'Developed', 'Built', 'Optimized' used",
+    "Certifications - Python/Django certifications",
+    "GitHub - Python projects and contributions",
+    "Database Experience - SQL and database optimization"
+  ],
+  "Node.js Developer": [
+    "Technical Skills - Node.js, Express, TypeScript, MongoDB listed",
+    "Experience Section - Backend APIs with Node.js",
+    "Projects - API development, microservices with Node.js",
+    "ATS Keywords - Node.js, Express, TypeScript, MongoDB presence",
+    "Education Section - CS or Software Engineering background",
+    "Text Parsability - Modern, clean formatting",
+    "Action Verbs - 'Built', 'Implemented', 'Scaled' used",
+    "Certifications - Node.js/JavaScript certifications",
+    "Database Experience - Experience with SQL and NoSQL",
+    "GitHub - Node.js projects and contributions"
+  ],
+  "Go/Golang Developer": [
+    "Technical Skills - Go, gRPC, Protobuf, Docker listed",
+    "Experience Section - Distributed systems with Go",
+    "Projects - High-performance APIs and services",
+    "ATS Keywords - Go, Golang, gRPC, microservices presence",
+    "Education Section - CS or Engineering background",
+    "Text Parsability - Clean, technical formatting",
+    "Action Verbs - 'Built', 'Designed', 'Optimized' used",
+    "Certifications - Cloud certifications",
+    "GitHub - Go contributions and projects",
+    "System Design - Scalable distributed systems mentioned"
+  ],
+  "Backend Architect": [
+    "Architecture Experience - Distributed systems and microservices",
+    "System Design - Scalability, reliability, availability highlighted",
+    "Technical Leadership - Architecture decisions and mentoring",
+    "ATS Keywords - Architecture, microservices, scalability presence",
+    "Projects - Large-scale, high-impact projects",
+    "Education Section - Advanced degree with specialization",
+    "Text Parsability - Executive-level professional formatting",
+    "Quantified Achievements - Metrics on system scale and impact",
+    "Certifications - Cloud, architecture, management certifications",
+    "Thought Leadership - Architecture blogs, talks, contributions"
+  ],
+  "Junior Full Stack": [
+    "Technical Skills - Both frontend and backend skills listed",
+    "Experience Section - Full stack development experience",
+    "Projects - End-to-end applications built",
+    "ATS Keywords - JavaScript, React, Node.js, MongoDB presence",
+    "Education Section - CS or related degree",
+    "Text Parsability - Clean formatting with clear sections",
+    "Action Verbs - 'Built', 'Created', 'Developed' used",
+    "Certifications - Relevant tech certifications",
+    "GitHub - Personal projects and contributions",
+    "Database Experience - SQL/NoSQL familiarity"
+  ],
+  "Senior Full Stack": [
+    "Full Stack Experience - Advanced proficiency on both sides",
+    "Technical Leadership - Mentoring and team leadership",
+    "System Design - Architecture and scalability expertise",
+    "Projects - Complex, full-stack applications with scale",
+    "ATS Keywords - Comprehensive tech stack coverage",
+    "Education Section - Graduate degree with specialization",
+    "Text Parsability - Professional, executive-level formatting",
+    "Quantified Achievements - Metrics on scale and impact",
+    "Certifications - Multiple relevant certifications",
+    "GitHub/Portfolio - Showcase of full-stack work"
+  ],
+  "Machine Learning Engineer": [
+    "Technical Skills - Python, PyTorch/TensorFlow, ML algorithms listed",
+    "ML Experience - Model training, evaluation, deployment highlighted",
+    "Projects - ML projects with real-world application",
+    "ATS Keywords - Python, PyTorch, TensorFlow, ML, AI presence",
+    "Education Section - Advanced degree in ML/AI/Data Science",
+    "Research Experience - Papers, publications if applicable",
+    "Text Parsability - Academic/technical formatting",
+    "Action Verbs - 'Built', 'Developed', 'Deployed' used",
+    "Certifications - Google/AWS ML certifications",
+    "GitHub - ML projects and contributions",
+    "MLOps - Deployment and production experience"
+  ],
+  "AI Engineer": [
+    "Technical Skills - LLMs, Transformers, LangChain, RAG listed",
+    "AI Experience - AI/LLM application development highlighted",
+    "Projects - LLM applications and AI systems",
+    "ATS Keywords - AI, LLM, Python, PyTorch, Transformers presence",
+    "Education Section - Advanced degree in AI/ML/CS",
+    "Research/Innovation - Novel AI applications",
+    "Text Parsability - Technical, research-oriented formatting",
+    "Action Verbs - 'Built', 'Fine-tuned', 'Implemented' used",
+    "Certifications - AI/ML certifications",
+    "GitHub - AI projects and contributions"
+  ],
+  "Data Scientist": [
+    "Technical Skills - Python, Pandas, NumPy, ML libraries listed",
+    "Analytics Experience - Data analysis, modeling, visualization",
+    "Projects - Data science projects with measurable outcomes",
+    "ATS Keywords - Data Science, Python, SQL, Machine Learning presence",
+    "Education Section - Statistics/Math/Data Science degree",
+    "Text Parsability - Academic-professional formatting",
+    "Action Verbs - 'Analyzed', 'Predicted', 'Optimized' used",
+    "Certifications - Data science certifications",
+    "Visualization - Tableau/Power BI experience",
+    "Statistical Analysis - Hypothesis testing, A/B testing"
+  ],
+  "DevOps Engineer": [
+    "Technical Skills - Docker, Kubernetes, AWS, Terraform listed",
+    "DevOps Experience - CI/CD, infrastructure automation",
+    "Projects - Infrastructure as code, container orchestration",
+    "ATS Keywords - DevOps, Docker, Kubernetes, AWS, CI/CD presence",
+    "Education Section - CS or Systems Engineering background",
+    "Text Parsability - Technical, systems-focused formatting",
+    "Action Verbs - 'Automated', 'Managed', 'Deployed' used",
+    "Certifications - AWS, Kubernetes, Terraform certifications",
+    "Scripting - Python/Bash experience mentioned",
+    "Monitoring - Observability experience (Prometheus, Grafana)"
+  ],
+  "SRE": [
+    "Technical Skills - Cloud platforms, Kubernetes, SRE practices",
+    "Reliability Experience - SLIs, SLOs, error budgets",
+    "Projects - Infrastructure reliability and cloud migration",
+    "ATS Keywords - SRE, Cloud, Kubernetes, AWS/Azure/GCP presence",
+    "Education Section - CS or Systems Engineering background",
+    "Text Parsability - Professional technical formatting",
+    "Action Verbs - 'Managed', 'Maintained', 'Optimized' used",
+    "Certifications - Cloud provider certifications",
+    "Cost Optimization - FinOps experience if applicable",
+    "Monitoring - Observability and alerting systems"
+  ],
+  "Security Engineer": [
+    "Technical Skills - Cybersecurity, OWASP, Penetration Testing listed",
+    "Security Experience - Vulnerability assessment, security architecture",
+    "Projects - Security testing, threat modeling",
+    "ATS Keywords - Security, OWASP, Penetration Testing, SIEM presence",
+    "Education Section - Cybersecurity or CS degree",
+    "Text Parsability - Professional formatting",
+    "Action Verbs - 'Tested', 'Assessed', 'Implemented' used",
+    "Certifications - CEH, CompTIA Security+, CISSP",
+    "Security Tools - Burp Suite, Metasploit mentioned",
+    "Incident Response - Experience with incident handling"
+  ],
+  "Data Analyst": [
+    "Technical Skills - SQL, Data Visualization, Python/R listed",
+    "Data Experience - Data cleaning, reporting, ETL processes",
+    "Projects - Real-world data analysis and dashboards",
+    "ATS Keywords - SQL, Tableau, Power BI, Data Analysis presence",
+    "Education Section - Statistics/Math/Business degree",
+    "Text Parsability - Clear, metric-driven formatting",
+    "Action Verbs - 'Analyzed', 'Reported', 'Visualized' used",
+    "Certifications - Data Analytics certifications",
+    "Business Intelligence - Focus on actionable insights",
+    "Statistical Analysis - Basic hypothesis testing"
+  ]
+};
+
+export const categorizedSkills = {
+  "Junior React Developer": {
+    "Programming Languages": ["JavaScript (ES6+)", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["React", "React Router", "Redux", "Axios"],
+    "Styling Tools": ["CSS Modules", "Bootstrap", "Sass"],
+    "Version Control": ["Git", "GitHub"],
+    "Build Tools": ["Webpack", "Babel"],
+    "Testing": ["Jest", "React Testing Library"],
+    "Other": ["REST APIs", "JSON", "Chrome DevTools"]
+  },
+  "Mid React Developer": {
+    "Programming Languages": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["React", "Next.js", "Redux Toolkit", "Context API", "React Query"],
+    "Styling Tools": ["Tailwind CSS", "SCSS", "Styled Components"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "Build Tools": ["Webpack", "Vite", "Babel"],
+    "Testing": ["Jest", "React Testing Library", "Cypress"],
+    "Other": ["GraphQL", "Apollo Client", "REST APIs", "WebSockets"]
+  },
+  "Senior React Developer": {
+    "Programming Languages": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["React", "Next.js", "Redux Toolkit", "Context API", "React Query", "Recoil", "Zustand"],
+    "Styling Tools": ["Tailwind CSS", "SCSS", "Styled Components", "Emotion"],
+    "Version Control": ["Git", "GitHub", "GitLab", "Bitbucket"],
+    "Build Tools": ["Webpack", "Vite", "Babel", "Turbopack"],
+    "Testing": ["Jest", "React Testing Library", "Cypress", "Playwright"],
+    "Other": ["GraphQL", "Apollo Client", "REST APIs", "WebSockets", "Storybook", "Micro-frontend Architecture"],
+    "Cloud/DevOps": ["AWS", "Docker", "CI/CD", "Vercel", "Netlify"]
+  },
+  "Angular Developer": {
+    "Programming Languages": ["TypeScript", "JavaScript (ES6+)", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["Angular", "Angular Material", "RxJS", "NgRx"],
+    "Styling Tools": ["SCSS", "Bootstrap", "Tailwind CSS"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "Build Tools": ["Webpack", "Angular CLI"],
+    "Testing": ["Jasmine", "Karma", "Protractor"],
+    "Other": ["REST APIs", "GraphQL", "Firebase", "Node.js"]
+  },
+  "Vue.js Developer": {
+    "Programming Languages": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["Vue.js", "Nuxt.js", "Vuex", "Pinia", "Vue Router"],
+    "Styling Tools": ["Tailwind CSS", "SCSS", "Vuetify", "Element UI"],
+    "Version Control": ["Git", "GitHub"],
+    "Build Tools": ["Vite", "Webpack"],
+    "Testing": ["Vitest", "Jest", "Cypress"],
+    "Other": ["GraphQL", "REST APIs", "Node.js"]
+  },
+  "React Native Developer": {
+    "Programming Languages": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["React Native", "React", "Redux Toolkit", "React Navigation", "Expo"],
+    "Mobile Tools": ["iOS SDK", "Android SDK", "Xcode", "Android Studio"],
+    "Version Control": ["Git", "GitHub"],
+    "Testing": ["Jest", "Detox", "React Native Testing Library"],
+    "Other": ["Push Notifications", "Deep Linking", "Firebase", "GraphQL", "REST APIs"]
+  },
+  "Frontend Architect": {
+    "Programming Languages": ["TypeScript", "JavaScript", "HTML5", "CSS3"],
+    "Architecture": ["Micro-frontends", "Server-Side Rendering", "Static Site Generation", "Web Components"],
+    "Frameworks & Libraries": ["React", "Next.js", "Apollo", "RxJS"],
+    "Performance": ["Core Web Vitals", "WebAssembly", "Service Workers", "CDN"],
+    "Tooling": ["Nx", "Turborepo", "Webpack", "Vite"],
+    "Cloud/DevOps": ["AWS", "Azure", "CI/CD", "Kubernetes", "Docker"]
+  },
+  "Java/Spring Boot Developer": {
+    "Programming Languages": ["Java", "SQL", "Python", "JavaScript"],
+    "Frameworks & Libraries": ["Spring Boot", "Spring Security", "Spring Data JPA", "Hibernate"],
+    "Database": ["PostgreSQL", "MySQL", "Oracle", "MongoDB"],
+    "Message Queues": ["Kafka", "RabbitMQ", "ActiveMQ"],
+    "Cloud": ["AWS", "Azure", "Google Cloud Platform"],
+    "DevOps": ["Docker", "Kubernetes", "Jenkins", "Maven", "Gradle"],
+    "Version Control": ["Git", "GitHub"],
+    "API": ["REST APIs", "GraphQL", "gRPC", "WebSocket"],
+    "Testing": ["JUnit", "Mockito", "TestNG"]
+  },
+  "Python/Django Developer": {
+    "Programming Languages": ["Python", "SQL", "JavaScript", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["Django", "Django REST Framework", "FastAPI", "Flask"],
+    "Database": ["PostgreSQL", "MySQL", "SQLite", "MongoDB", "Redis"],
+    "Data Processing": ["Pandas", "NumPy", "Celery"],
+    "Cloud": ["AWS", "Azure", "GCP"],
+    "DevOps": ["Docker", "CI/CD", "Git", "Linux"],
+    "Version Control": ["Git", "GitHub"],
+    "API": ["REST APIs", "GraphQL"],
+    "Testing": ["Pytest", "Unittest", "Pydantic"]
+  },
+  "Node.js Developer": {
+    "Programming Languages": ["JavaScript", "TypeScript", "SQL", "HTML5", "CSS3"],
+    "Frameworks & Libraries": ["Node.js", "Express.js", "NestJS", "Fastify"],
+    "Database": ["MongoDB", "PostgreSQL", "MySQL", "Redis", "Firebase"],
+    "Cloud": ["AWS", "Azure", "GCP", "Vercel"],
+    "DevOps": ["Docker", "CI/CD", "Git", "Linux"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "API": ["REST APIs", "GraphQL", "WebSocket"],
+    "Testing": ["Jest", "Mocha", "Chai", "Supertest"]
+  },
+  "Go/Golang Developer": {
+    "Programming Languages": ["Go (Golang)", "SQL", "Python", "JavaScript"],
+    "Frameworks & Libraries": ["Gin", "Fiber", "Echo", "GORM"],
+    "Database": ["PostgreSQL", "MySQL", "MongoDB", "Redis"],
+    "Cloud": ["AWS", "Azure", "GCP"],
+    "DevOps": ["Docker", "Kubernetes", "Terraform", "CI/CD"],
+    "Version Control": ["Git", "GitHub"],
+    "API": ["REST APIs", "gRPC", "GraphQL", "WebSocket"],
+    "Testing": ["Testing package", "Mocking", "Integration testing"]
+  },
+  "Backend Architect": {
+    "Programming Languages": ["Java", "Go", "Python", "TypeScript"],
+    "System Design": ["Distributed Systems", "Microservices", "Event-Driven Architecture", "CQRS"],
+    "Databases": ["PostgreSQL", "Cassandra", "MongoDB", "Redis", "Elasticsearch"],
+    "Cloud/DevOps": ["AWS", "Kubernetes", "Docker", "Terraform", "CI/CD"],
+    "Message Brokers": ["Kafka", "RabbitMQ", "SQS", "SNS"]
+  },
+  "Junior Full Stack": {
+    "Frontend": ["React", "JavaScript", "HTML5", "CSS3", "Bootstrap", "Redux"],
+    "Backend": ["Node.js", "Express.js", "MongoDB", "REST APIs"],
+    "Version Control": ["Git", "GitHub"],
+    "Other": ["JWT", "Authentication", "Deployment"],
+    "Tools": ["VS Code", "Postman", "MongoDB Atlas"]
+  },
+  "Senior Full Stack": {
+    "Frontend": ["React", "Next.js", "TypeScript", "HTML5", "CSS3", "Tailwind CSS", "Redux"],
+    "Backend": ["Node.js", "Python/Django", "Express.js", "PostgreSQL", "MongoDB"],
+    "DevOps": ["Docker", "AWS", "CI/CD", "Kubernetes"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "API": ["REST APIs", "GraphQL", "WebSocket"],
+    "Testing": ["Jest", "React Testing Library", "Cypress"],
+    "Other": ["System Design", "Microservices", "Cloud Architecture"]
+  },
+  "Machine Learning Engineer": {
+    "Programming Languages": ["Python", "R", "SQL", "C++"],
+    "ML Frameworks": ["PyTorch", "TensorFlow", "Keras", "Scikit-learn"],
+    "Data Processing": ["Pandas", "NumPy", "SciPy", "Dask"],
+    "Database": ["PostgreSQL", "MySQL", "MongoDB", "Redis"],
+    "MLOps": ["MLflow", "Kubeflow", "DVC", "W&B"],
+    "Cloud": ["AWS SageMaker", "GCP Vertex AI", "Azure ML"],
+    "DevOps": ["Docker", "Kubernetes", "CI/CD", "Git"],
+    "Data Visualization": ["Matplotlib", "Seaborn", "Plotly"],
+    "Other": ["Feature Engineering", "Model Evaluation", "Hyperparameter Tuning"]
+  },
+  "AI Engineer": {
+    "Programming Languages": ["Python", "SQL", "Java", "C++"],
+    "AI Frameworks": ["PyTorch", "TensorFlow", "LangChain", "LlamaIndex"],
+    "LLM Tools": ["OpenAI API", "Anthropic API", "HuggingFace", "Transformers"],
+    "Vector Databases": ["Pinecone", "Weaviate", "ChromaDB", "Milvus"],
+    "Data Processing": ["Pandas", "NumPy", "NLTK", "spaCy"],
+    "Cloud": ["AWS Bedrock", "GCP Vertex AI", "Azure Cognitive Services"],
+    "DevOps": ["Docker", "Kubernetes", "Git"],
+    "Other": ["RAG Systems", "Prompt Engineering", "Model Fine-tuning", "Evaluations"]
+  },
+  "Data Scientist": {
+    "Programming Languages": ["Python", "R", "SQL", "SAS"],
+    "Data Analysis": ["Pandas", "NumPy", "SciPy", "StatsModels"],
+    "Visualization": ["Matplotlib", "Seaborn", "Plotly", "Tableau", "Power BI"],
+    "Machine Learning": ["Scikit-learn", "XGBoost", "LightGBM", "CatBoost"],
+    "Deep Learning": ["PyTorch", "TensorFlow", "Keras"],
+    "Big Data": ["Spark", "Hadoop", "Hive"],
+    "Database": ["SQL", "PostgreSQL", "MongoDB"],
+    "Cloud": ["AWS", "GCP", "Azure"],
+    "Other": ["Statistical Modeling", "A/B Testing", "Experiment Design"]
+  },
+  "DevOps Engineer": {
+    "Containerization": ["Docker", "Podman", "Kubernetes", "Helm"],
+    "Cloud Platforms": ["AWS", "Azure", "Google Cloud Platform"],
+    "Infrastructure as Code": ["Terraform", "CloudFormation", "Pulumi"],
+    "CI/CD": ["Jenkins", "GitHub Actions", "GitLab CI", "CircleCI", "ArgoCD"],
+    "Configuration Management": ["Ansible", "Chef", "Puppet"],
+    "Scripting": ["Python", "Bash/Shell", "PowerShell", "Go"],
+    "Monitoring": ["Prometheus", "Grafana", "Datadog", "NewRelic", "ELK Stack"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "Networking": ["TCP/IP", "DNS", "Load Balancing", "Firewalls"],
+    "Security": ["Vault", "Security Scanning", "IAM"]
+  },
+  "SRE": {
+    "Cloud Platforms": ["AWS", "Azure", "GCP", "Oracle Cloud"],
+    "Containerization": ["Docker", "Kubernetes", "OpenShift"],
+    "Infrastructure": ["Terraform", "CloudFormation", "Ansible"],
+    "CI/CD": ["GitHub Actions", "GitLab CI", "ArgoCD"],
+    "Monitoring": ["Prometheus", "Grafana", "Datadog", "Dynatrace", "NewRelic"],
+    "Observability": ["OpenTelemetry", "Jaeger", "Zipkin"],
+    "Scripting": ["Python", "Bash", "Go", "Ruby"],
+    "Networking": ["TCP/IP", "DNS", "CDN", "Load Balancing", "VPC"],
+    "Security": ["IAM", "Security Groups", "WAF"],
+    "Version Control": ["Git", "GitHub", "GitLab"],
+    "Database": ["RDS", "DynamoDB", "PostgreSQL", "MySQL"]
+  },
+  "Security Engineer": {
+    "Security Frameworks": ["OWASP", "NIST", "ISO 27001", "GDPR"],
+    "Penetration Testing": ["Burp Suite", "Metasploit", "Nmap", "Wireshark"],
+    "SIEM": ["Splunk", "ELK Stack", "QRadar", "Sentinel"],
+    "Cloud Security": ["AWS Security", "Azure Security", "GCP Security"],
+    "Programming": ["Python", "Bash", "PowerShell", "C/C++"],
+    "Network Security": ["Firewalls", "IDS/IPS", "VPN", "Zero Trust"],
+    "Application Security": ["SAST", "DAST", "SCA", "OWASP Top 10"],
+    "Incident Response": ["IR Plans", "Forensics", "Malware Analysis"],
+    "Certifications": ["CEH", "CISSP", "CompTIA Security+", "OSCP"],
+    "Other": ["Cryptography", "Access Control", "IAM", "SOC Operations"]
+  },
+  "Data Analyst": {
+    "Programming Languages": ["SQL", "Python", "R"],
+    "Visualization": ["Tableau", "Power BI", "Looker", "Qlik"],
+    "Databases": ["PostgreSQL", "MySQL", "Snowflake", "Redshift"],
+    "Excel": ["Pivot Tables", "VBA", "Power Query", "Macros"],
+    "Analytics": ["Google Analytics", "Mixpanel", "Amplitude"]
+  }
+};
