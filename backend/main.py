@@ -26,17 +26,13 @@ import os
 
 # Configure CORS
 # Allow origins from environment variable or fallback to local
-frontend_url = os.getenv("FRONTEND_URL")
-allowed_origins = [
-    "http://localhost:5173", 
-    "http://127.0.0.1:5173"
-]
-if frontend_url:
-    allowed_origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins, 
+    allow_origins=[
+        "http://localhost:5173",  # Your Vite dev
+        "https://ai-resume-parser-1-5eb7.onrender.com",  # Your LIVE frontend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
