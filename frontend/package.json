@@ -13,6 +13,7 @@
     "autoprefixer": "^10.5.0",
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "framer-motion": "^12.42.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.21.0",
@@ -36,6 +37,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.6.0",
+    "typescript": "^7.0.2",
     "vite": "^8.1.0"
   }
 }

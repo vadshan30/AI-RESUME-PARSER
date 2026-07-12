@@ -1,14 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, Map, BookOpen, Clock, Target, Loader, AlertTriangle, 
-  ChevronDown, ChevronUp, CheckCircle, Circle, Play, Calendar, 
-  TrendingUp, Award, Briefcase, DollarSign, Activity, FileText
+import {
+  Map, BookOpen, Clock, Target, Loader, AlertTriangle,
+  ChevronDown, ChevronUp, CheckCircle, Circle, Play, Calendar,
+  TrendingUp, Award, Activity, ArrowLeft,
 } from 'lucide-react';
 import { useRoadmapGeneratorStore } from '../store/useRoadmapGeneratorStore';
-import { useUserStore } from '../store/useUserStore';
-import { JOB_CATEGORIES, ALL_ROLES } from '../data/jobRoles';
+import { useActiveResume } from '../hooks/useActiveResume';
+import { ModuleShell } from '../components/resume/ModuleShell';
+import { GlobalResumeUpload } from '../components/resume/GlobalResumeUpload';
+import { ActiveResumeBanner } from '../components/resume/ActiveResumeBanner';
+import { RoleSelector } from '../components/resume/RoleSelector';
+import api from '../services/api';
+
+function isValidRoadmapData(data: unknown): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.role_name === 'string' &&
+    typeof d.timeline === 'object' && d.timeline !== null &&
+    typeof d.salary_growth === 'object' && d.salary_growth !== null &&
+    Array.isArray(d.phases) &&
+    Array.isArray(d.weekly_plan) &&
+    Array.isArray(d.missing_skills_targeted)
+  );
+}
 
 const PhaseAccordion = ({ phase, index, toggleTask }: any) => {
   const [isOpen, setIsOpen] = useState(index === 0);
@@ -174,150 +191,156 @@ const AILearningRoadmap = () => {
     clearRoadmap, toggleTaskCompletion 
   } = useRoadmapGeneratorStore();
   
-  const { currentUser, getResumesForCurrentUser } = useUserStore();
-  const resumes = getResumesForCurrentUser();
-  const [searchTerm, setSearchTerm] = useState(selectedRole || '');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [localMissingSkills, setLocalMissingSkills] = useState("");
+  const {
+    resumeId,
+    hasResume,
+    isInitializing,
+    isUploading,
+    uploadProgress,
+    uploadError,
+    uploadSuccess,
+    handleUpload,
+    retryUpload,
+    resume,
+  } = useActiveResume({ targetRole: selectedRole });
 
-  useEffect(() => {
-    setSearchTerm(selectedRole);
-  }, [selectedRole]);
+  const [showUpload, setShowUpload] = useState(false);
+  const [localMissingSkills, setLocalMissingSkills] = useState('');
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
 
-  // Pre-fill missing skills based on resume analysis if available, otherwise just use empty and let backend handle
-  useEffect(() => {
-    if (resumes.length > 0 && missingSkills.length === 0) {
-      // Mocking auto-detection for the UI
-      setMissingSkills(["Docker", "Kubernetes", "GraphQL"]);
-      setLocalMissingSkills("Docker, Kubernetes, GraphQL");
+  const validRoadmapData = useMemo(() => {
+    if (!roadmapData) return null;
+    if (!isValidRoadmapData(roadmapData)) {
+      console.warn('[Roadmap] Invalid roadmapData detected, clearing.', roadmapData);
+      clearRoadmap();
+      return null;
     }
-  }, [resumes, missingSkills.length, setMissingSkills]);
+    return roadmapData;
+  }, [roadmapData, clearRoadmap]);
 
-  const filteredCategories = JOB_CATEGORIES.map(cat => ({
-    ...cat,
-    roles: cat.roles.filter(r => r.toLowerCase().includes(searchTerm.toLowerCase()))
-  })).filter(cat => cat.roles.length > 0);
+  useEffect(() => {
+    if (missingSkills.length > 0) {
+      setLocalMissingSkills(missingSkills.join(', '));
+    }
+  }, [missingSkills]);
 
-  const isCustomRole = searchTerm.length > 0 && !ALL_ROLES.some(r => r.toLowerCase() === searchTerm.toLowerCase());
+  const autoDetectSkills = async () => {
+    if (!resumeId || !selectedRole) return;
+    setIsAutoDetecting(true);
+    try {
+      const response = await api.post('/ai/skill-gap', {
+        resume_id: resumeId,
+        target_role: selectedRole,
+      });
+      const missing: string[] = [];
+      if (response.data.criticalGaps) {
+        missing.push(...response.data.criticalGaps.map((g: { skill: string }) => g.skill));
+      }
+      if (response.data.highPriorityGaps) {
+        missing.push(...response.data.highPriorityGaps.map((g: { skill: string }) => g.skill));
+      }
+      if (missing.length > 0) {
+        const topMissing = missing.slice(0, 8);
+        setMissingSkills(topMissing);
+        setLocalMissingSkills(topMissing.join(', '));
+      }
+    } catch (err) {
+      console.error('Auto-detect failed:', err);
+    } finally {
+      setIsAutoDetecting(false);
+    }
+  };
 
   const handleGenerate = async () => {
-    const parsedSkills = localMissingSkills.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    const parsedSkills = localMissingSkills.split(',').map((s) => s.trim()).filter(Boolean);
     setMissingSkills(parsedSkills);
     await generateRoadmap();
   };
 
-  return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-100 font-sans selection:bg-blue-500/30 pb-20">
-      <nav className="border-b border-slate-800 bg-[#0B1120]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600/20 p-2 rounded-lg border border-blue-500/30">
-              <Map className="h-5 w-5 text-blue-400" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">AI Career Mentor</span>
-          </div>
-          <Link to="/dashboard" className="text-sm font-medium flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
-        </div>
-      </nav>
+  const handleUploadAndDetect = async (file: File) => {
+    const uploaded = await handleUpload(file, selectedRole);
+    setShowUpload(false);
+    if (uploaded && selectedRole) {
+      setTimeout(() => autoDetectSkills(), 500);
+    }
+  };
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {!roadmapData ? (
-          <div className="max-w-3xl mx-auto space-y-8 mt-10">
+  return (
+    <ModuleShell icon={Map} title="AI Career Mentor" subtitle="Personalized learning roadmap from your resume" accent="blue">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
+      {!validRoadmapData ? (
+        isInitializing ? (
+          <div className="flex flex-col items-center py-20">
+            <Loader className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+            <p className="text-slate-400 text-sm">Loading…</p>
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto space-y-8">
             <div className="text-center">
               <h1 className="text-4xl font-black text-white mb-4">Generate Your Path</h1>
-              <p className="text-slate-400">Our AI Mentor dynamically structures a completely personalized, 8-phase roadmap based on your missing skills and target career.</p>
+              <p className="text-slate-400">
+                Upload your resume, select a target role, and get a personalized multi-phase learning roadmap.
+              </p>
             </div>
 
-            <div className="bg-slate-800/40 p-8 rounded-3xl border border-slate-700/50 shadow-2xl space-y-6">
-              
-              {/* Role Selection */}
+            <div className="bg-slate-800/40 p-6 sm:p-8 rounded-3xl border border-slate-700/50 shadow-2xl space-y-6">
               <div>
-                <label className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-3 block">Target Role</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-5 py-4 text-white font-medium focus:outline-none focus:border-blue-500 shadow-inner"
-                    placeholder="Search 500+ careers (e.g. AI Engineer, React Developer)..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      if (!isDropdownOpen) setIsDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsDropdownOpen(true)}
+                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Step 1 — Resume</p>
+                {!hasResume || showUpload ? (
+                  <GlobalResumeUpload
+                    accent="blue"
+                    onUpload={handleUploadAndDetect}
+                    onRetry={retryUpload}
+                    isUploading={isUploading}
+                    uploadProgress={uploadProgress}
+                    uploadError={uploadError}
+                    uploadSuccess={uploadSuccess}
                   />
-                  {isDropdownOpen && (
-                    <div className="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-h-80 overflow-y-auto mt-2">
-                      {filteredCategories.length > 0 ? (
-                        filteredCategories.map((category, idx) => (
-                          <div key={idx} className="border-b border-slate-700/50 last:border-0">
-                            <div className="bg-slate-900/50 px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider sticky top-0 backdrop-blur-md">
-                              {category.name}
-                            </div>
-                            {category.roles.map(role => (
-                              <div 
-                                key={role}
-                                className="px-6 py-3 hover:bg-blue-500/10 cursor-pointer text-slate-300 font-medium hover:text-blue-300 transition-colors"
-                                onClick={() => {
-                                  setSelectedRole(role);
-                                  setSearchTerm(role);
-                                  setIsDropdownOpen(false);
-                                }}
-                              >
-                                {role}
-                              </div>
-                            ))}
-                          </div>
-                        ))
-                      ) : (
-                         <div className="p-4 text-center text-slate-400 text-sm">No exact matches. Type to use custom role.</div>
-                      )}
-                      {isCustomRole && (
-                        <div 
-                          className="px-6 py-4 bg-blue-600/20 hover:bg-blue-600/30 cursor-pointer border-t border-blue-500/30 text-white font-bold"
-                          onClick={() => {
-                            setSelectedRole(searchTerm);
-                            setIsDropdownOpen(false);
-                          }}
-                        >
-                          Use Custom Career: {searchTerm}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <ActiveResumeBanner resume={resume!} onReplace={() => setShowUpload(true)} accent="blue" />
+                )}
               </div>
 
-              {/* Extracted Missing Skills Override */}
               <div>
-                <label className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-3 flex items-center justify-between">
-                  <span>Detected Missing Skills</span>
-                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">Auto-extracted from Resume</span>
-                </label>
-                <input 
-                  type="text" 
+                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Step 2 — Target Role</p>
+                <RoleSelector value={selectedRole} onChange={setSelectedRole} accent="blue" label="" />
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Step 3 — Missing Skills</p>
+                <input
+                  type="text"
                   className="w-full bg-slate-900 border border-slate-600 rounded-xl px-5 py-4 text-white font-medium focus:outline-none focus:border-blue-500 shadow-inner"
                   value={localMissingSkills}
                   onChange={(e) => setLocalMissingSkills(e.target.value)}
                   placeholder="e.g. Python, Docker, React (comma separated)"
                 />
-                <p className="text-xs text-slate-500 mt-2">These skills will drive the Core Technologies learning phase.</p>
+                <p className="text-xs text-slate-500 mt-2">These skills drive your personalized learning phases.</p>
               </div>
 
-              {resumes.length === 0 && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center text-amber-400 text-sm font-bold">
-                  <AlertTriangle className="h-5 w-5 mr-2 shrink-0" /> No resume uploaded. You will need to manually enter your missing skills.
-                </div>
+              {hasResume && selectedRole && (
+                <button
+                  onClick={autoDetectSkills}
+                  disabled={isAutoDetecting}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
+                >
+                  {isAutoDetecting ? <Loader className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                  {isAutoDetecting ? 'Detecting skills from resume…' : 'Auto-Detect Missing Skills from Resume'}
+                </button>
               )}
 
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !selectedRole}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20 mt-6"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20"
               >
                 {isGenerating ? <Loader className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5 fill-current" />}
-                {isGenerating ? "Synthesizing Roadmap..." : "Generate Deep Roadmap"}
+                {isGenerating ? 'Generating roadmap…' : 'Generate Learning Roadmap'}
               </button>
 
               {error && (
@@ -327,18 +350,19 @@ const AILearningRoadmap = () => {
               )}
             </div>
           </div>
-        ) : (
+        )
+      ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
             
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-slate-800/40 p-8 rounded-3xl border border-slate-700/50">
               <div>
                 <h2 className="text-4xl font-black text-white flex items-center">
-                  {roadmapData.role_name} <span className="ml-3 px-3 py-1 bg-blue-500/20 text-blue-400 text-sm uppercase tracking-widest rounded-lg border border-blue-500/30">Roadmap</span>
+                  {validRoadmapData.role_name} <span className="ml-3 px-3 py-1 bg-blue-500/20 text-blue-400 text-sm uppercase tracking-widest rounded-lg border border-blue-500/30">Roadmap</span>
                 </h2>
                 <div className="flex items-center gap-6 mt-4 text-slate-400 text-sm font-medium">
-                  <span className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-slate-500" /> {roadmapData.timeline.total_months} Months Total</span>
-                  <span className="flex items-center"><Target className="h-4 w-4 mr-2 text-slate-500" /> {roadmapData.phases.length} Phases</span>
+                  <span className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-slate-500" /> {validRoadmapData.timeline.total_months ?? 0} Months Total</span>
+                  <span className="flex items-center"><Target className="h-4 w-4 mr-2 text-slate-500" /> {validRoadmapData.phases.length} Phases</span>
                 </div>
               </div>
               <button onClick={clearRoadmap} className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-sm font-bold transition-colors">
@@ -355,7 +379,7 @@ const AILearningRoadmap = () => {
                 </h3>
                 
                 <div className="space-y-4">
-                  {roadmapData.phases.map((phase: any, idx: number) => (
+                  {validRoadmapData.phases.map((phase: any, idx: number) => (
                     <PhaseAccordion key={phase.id} phase={phase} index={idx} toggleTask={toggleTaskCompletion} />
                   ))}
                 </div>
@@ -370,7 +394,7 @@ const AILearningRoadmap = () => {
                     <TrendingUp className="h-5 w-5 mr-2" /> Expected Salary Trajectory
                   </h3>
                   <div className="space-y-4">
-                    {Object.entries(roadmapData.salary_growth).map(([level, salary]: [string, any], idx) => (
+                    {Object.entries(validRoadmapData.salary_growth).map(([level, salary]: [string, any], idx) => (
                       <div key={level} className="relative">
                         {idx !== 0 && <div className="absolute w-0.5 h-4 bg-emerald-500/20 left-4 -top-4" />}
                         <div className="flex items-center">
@@ -393,7 +417,7 @@ const AILearningRoadmap = () => {
                     <Calendar className="h-5 w-5 mr-2 text-blue-400" /> 12-Week Sprint Snapshot
                   </h3>
                   <div className="space-y-3">
-                    {roadmapData.weekly_plan.map((wp: any) => (
+                    {validRoadmapData.weekly_plan.map((wp: any) => (
                       <div key={wp.week} className="flex gap-4">
                         <div className="w-12 text-center shrink-0">
                           <span className="text-[10px] uppercase font-black text-slate-500 block">Wk</span>
@@ -401,7 +425,7 @@ const AILearningRoadmap = () => {
                         </div>
                         <div className="flex-1 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                           <span className="text-xs font-bold text-blue-400 mb-1 block">{wp.focus}</span>
-                          <p className="text-sm text-slate-400 truncate w-48">{wp.tasks[0]}</p>
+                          <p className="text-sm text-slate-400 truncate w-48">{wp?.tasks?.[0] ?? ''}</p>
                         </div>
                       </div>
                     ))}
@@ -415,7 +439,7 @@ const AILearningRoadmap = () => {
                   </h3>
                   <p className="text-xs text-slate-400 mb-4">This roadmap explicitly integrates core modules for the following missing skills detected from your resume.</p>
                   <div className="flex flex-wrap gap-2">
-                    {roadmapData.missing_skills_targeted.map((s: string) => (
+                    {validRoadmapData.missing_skills_targeted.map((s: string) => (
                       <span key={s} className="px-2 py-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold rounded">
                         {s}
                       </span>
@@ -427,8 +451,7 @@ const AILearningRoadmap = () => {
             </div>
           </motion.div>
         )}
-      </main>
-    </div>
+    </ModuleShell>
   );
 };
 

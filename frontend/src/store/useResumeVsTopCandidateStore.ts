@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useUserStore } from './useUserStore';
+import { useResumeStore } from './useResumeStore';
 import api from '../services/api';
 import { RoleProfile } from '../data/RoleKnowledgeBase';
 
@@ -204,8 +204,8 @@ export const useResumeVsTopCandidateStore = create<ResumeVsTopCandidateStore>((s
     try {
       const roleData = await loadRoleData(targetRole);
 
-      // Fetch the active resume from the user store
-      const resumes = useUserStore.getState().resumes;
+      // Fetch the active resume from the central resume store
+      const resumes = useResumeStore.getState().history;
       const activeResume = resumes.find(r => r.id === selectedResumeId);
 
       if (!activeResume) {

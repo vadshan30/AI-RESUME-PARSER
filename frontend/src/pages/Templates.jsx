@@ -1,4 +1,3 @@
-import React from 'react';
 import AIResumeStudio from './AIResumeStudio';
 
 const Templates = () => {

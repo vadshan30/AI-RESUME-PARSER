@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import engine, Base
-from backend.routers import resumes, ai, analytics, career, roadmap, insights, studio
+from backend.routers import resumes, ai, analytics, career, roadmap, insights, studio, platform, health, job_match
+from backend.middleware.error_handler import setup_app as setup_error_handlers
 
 # Create all tables in the database (this creates the normalized relational tables)
 # This will recreate tables that were dropped by the user.
@@ -12,7 +13,7 @@ from backend.database import engine
 
 Base.metadata.create_all(bind=engine)
 
-# Auto-migrate: Add analysis_data JSON column if it doesn't exist
+# Auto-migrate: Add new columns if they don't exist
 from sqlalchemy import text
 try:
     with engine.begin() as conn:
@@ -20,20 +21,27 @@ try:
 except Exception as e:
     pass # Column likely already exists
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE resumes ADD COLUMN file_path VARCHAR(500) NULL;"))
+except Exception as e:
+    pass # Column likely already exists
+
 app = FastAPI(title="AI Resume Parser & ATS", version="1.0.0")
+setup_error_handlers(app)
 
 import os
 
-# Configure CORS
-# Allow origins from environment variable or fallback to local
+from backend.core.config import get_settings
+
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Your Vite dev
-        "https://ai-resume-parser-1-5eb7.onrender.com",  # Your LIVE frontend
-    ],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins_list,
+    # Allow any local dev port (5173, 5174, etc.) and deployed frontends
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -41,11 +49,14 @@ app.add_middleware(
 # Include Routers
 app.include_router(resumes.router)
 app.include_router(ai.router)
+app.include_router(job_match.router)
 app.include_router(analytics.router)
 app.include_router(career.router)
 app.include_router(roadmap.router)
 app.include_router(insights.router)
 app.include_router(studio.router)
+app.include_router(platform.router)
+app.include_router(health.router)
 
 
 @app.get("/")

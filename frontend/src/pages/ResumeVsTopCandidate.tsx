@@ -1,152 +1,147 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUserStore, SavedResume } from '../store/useUserStore';
+import { useNavigate } from 'react-router-dom';
+import { useResumeStore } from '../store/useResumeStore';
 import { useResumeVsTopCandidateStore } from '../store/useResumeVsTopCandidateStore';
-import ResumeLibrary from '../components/resume/ResumeLibrary';
-import ResumePreviewModal from '../components/resume/ResumePreviewModal';
+import { useActiveResume } from '../hooks/useActiveResume';
+import { ModuleShell } from '../components/resume/ModuleShell';
+import { GlobalResumeUpload } from '../components/resume/GlobalResumeUpload';
+import { ActiveResumeBanner } from '../components/resume/ActiveResumeBanner';
+import { RoleSelector } from '../components/resume/RoleSelector';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   LineChart, Line, CartesianGrid, ReferenceLine
 } from 'recharts';
 import {
-  ArrowLeft, Target, Search, FileText, CheckCircle, AlertTriangle, XCircle,
-  ChevronDown, Award, Briefcase, GraduationCap, DollarSign, TrendingUp,
-  Activity, Star, Clock, Zap, Map, FileText as FileTextIcon, RefreshCw
+  Target, FileText, CheckCircle, AlertTriangle, XCircle,
+  Award, Briefcase, GraduationCap, DollarSign, TrendingUp,
+  Activity, Clock, Map, RefreshCw, Loader, Play, ArrowLeft,
 } from 'lucide-react';
 
-const CATEGORIZED_ROLES = [
-  {
-    category: "Software Development",
-    roles: [
-      "Software Engineer", "Software Developer", "Backend Developer", "Frontend Developer", "Full Stack Developer",
-      "Python Developer", "Java Developer", "C++ Developer", "Node.js Developer", "Go Developer", "Ruby on Rails Developer"
-    ]
-  },
-  {
-    category: "Data Science & AI",
-    roles: [
-      "Data Scientist", "Machine Learning Engineer", "AI Engineer", "Data Engineer", "Data Analyst",
-      "NLP Engineer", "Computer Vision Engineer", "MLOps Engineer", "Analytics Engineer"
-    ]
-  },
-  {
-    category: "Cloud & DevOps",
-    roles: [
-      "DevOps Engineer", "Cloud Architect", "Site Reliability Engineer (SRE)", "AWS Engineer", "Azure Engineer",
-      "Kubernetes Engineer", "Platform Engineer", "Release Engineer"
-    ]
-  },
-  {
-    category: "Cyber Security",
-    roles: [
-      "Cyber Security Analyst", "Security Engineer", "Penetration Tester", "Ethical Hacker",
-      "Cloud Security Engineer", "SOC Analyst", "Security Architect"
-    ]
-  },
-  {
-    category: "Web & Mobile",
-    roles: [
-      "React Developer", "Angular Developer", "Vue.js Developer", "iOS Developer", "Android Developer",
-      "Flutter Developer", "React Native Developer", "UI/UX Designer"
-    ]
-  }
-];
-
-const TOP_COMPANIES = [
-  { name: 'Google', type: 'FAANG', diff: 'Very High' },
-  { name: 'Meta', type: 'FAANG', diff: 'Very High' },
-  { name: 'Amazon', type: 'FAANG', diff: 'Very High' },
-  { name: 'Microsoft', type: 'FAANG', diff: 'Very High' },
-  { name: 'Apple', type: 'FAANG', diff: 'Very High' },
-  { name: 'Netflix', type: 'FAANG', diff: 'Very High' },
-  { name: 'Stripe', type: 'Fintech', diff: 'Very High' },
-  { name: 'Uber', type: 'Tech', diff: 'High' },
-  { name: 'Accenture', type: 'Consulting', diff: 'Medium' },
-  { name: 'Deloitte', type: 'Consulting', diff: 'Medium' }
-];
-
 export default function ResumeVsTopCandidate() {
-  const { getResumesForCurrentUser, uploadResume } = useUserStore();
-  const resumes = getResumesForCurrentUser();
-
+  const navigate = useNavigate();
+  const { history: resumes } = useResumeStore();
   const {
     selectedResumeId, targetRole, roleData, comparisonResult, isLoading, error,
-    selectResume, setTargetRole
+    selectResume, setTargetRole, runComparison, reset,
   } = useResumeVsTopCandidateStore();
 
-  const [searchRole, setSearchRole] = useState('');
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(!resumes.length);
-  const [previewResume, setPreviewResume] = useState<SavedResume | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const {
+    resume,
+    resumeId,
+    hasResume,
+    isInitializing,
+    isUploading,
+    uploadProgress,
+    uploadError,
+    uploadSuccess,
+    handleUpload,
+    retryUpload,
+  } = useActiveResume({ targetRole: targetRole || undefined });
 
-  // Initialize store on mount if resumes exist
-  React.useEffect(() => {
-    if (resumes.length > 0 && !selectedResumeId) {
-      selectResume(resumes[0].id);
+  const [showUpload, setShowUpload] = useState(false);
+  const [localRole, setLocalRole] = useState(targetRole || 'Software Engineer');
+
+  useEffect(() => {
+    if (resumeId && !selectedResumeId) {
+      selectResume(resumeId);
     }
-  }, [resumes, selectedResumeId, selectResume]);
+  }, [resumeId, selectedResumeId, selectResume]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setIsUploading(true);
-      const newResume = await uploadResume(e.target.files[0]);
-      setIsUploading(false);
-      if (newResume) {
-        selectResume(newResume.id);
-        setIsLibraryOpen(false);
-      }
+  useEffect(() => {
+    if (targetRole) setLocalRole(targetRole);
+  }, [targetRole]);
+
+  const handleUploadResume = async (file: File) => {
+    const uploaded = await handleUpload(file, localRole);
+    setShowUpload(false);
+    if (uploaded?.id) {
+      selectResume(uploaded.id);
     }
   };
 
-  const activeResume = resumes.find(r => r.id === selectedResumeId);
+  const handleCompare = async () => {
+    if (!resumeId && !selectedResumeId) return;
+    const id = selectedResumeId || resumeId;
+    if (id) selectResume(id);
+    setTargetRole(localRole);
+    await runComparison();
+  };
 
-  if (error) {
+  const activeResume = resumes.find((r) => r.id === (selectedResumeId || resumeId)) || resume;
+
+  if (error && !comparisonResult) {
     return (
-      <div className="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col items-center justify-center p-6">
-        <AlertTriangle className="w-16 h-16 text-rose-500 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Comparison Failed</h2>
-        <p className="text-slate-400 mb-6 text-center max-w-md">{error}</p>
-        <button
-          onClick={() => { useResumeVsTopCandidateStore.getState().runComparison(); }}
-          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
-        >
-          Try Again
-        </button>
-        <Link to="/dashboard" className="mt-4 text-slate-500 hover:text-white transition-colors text-sm">
-          Go back to Dashboard
-        </Link>
-      </div>
+      <ModuleShell icon={Target} title="Resume vs Top Candidate" subtitle="Compare against ideal profiles" accent="blue" showBackButton>
+        <div className="max-w-lg mx-auto text-center py-16">
+          <AlertTriangle className="w-14 h-14 text-rose-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Comparison Failed</h2>
+          <p className="text-slate-400 mb-6">{error}</p>
+          <button
+            onClick={handleCompare}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold"
+          >
+            Try Again
+          </button>
+        </div>
+      </ModuleShell>
     );
   }
 
-  if (isLoading || !comparisonResult || !roleData || !activeResume) {
+  if (!comparisonResult || !roleData || !activeResume) {
     return (
-      <div className="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col items-center justify-center p-6">
-        {isUploading || isLoading ? (
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-            <h2 className="text-2xl font-bold mb-2">{isUploading ? 'Uploading Resume...' : 'Running Comparison AI...'}</h2>
-            <p className="text-slate-400 text-center max-w-sm">Generating comprehensive gap analysis and career trajectory metrics.</p>
+      <ModuleShell icon={Target} title="Resume vs Top Candidate" subtitle="Compare against ideal profiles" accent="blue" showBackButton>
+        {isInitializing ? (
+          <div className="flex flex-col items-center py-20">
+            <Loader className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+            <p className="text-slate-400 text-sm">Loading…</p>
+          </div>
+        ) : isLoading || isUploading ? (
+          <div className="flex flex-col items-center py-20">
+            <Loader className="h-12 w-12 text-indigo-500 animate-spin mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">
+              {isUploading ? 'Uploading & parsing resume…' : 'Generating comparison…'}
+            </h2>
+            <p className="text-slate-400 text-sm">Building ideal candidate profile and match analysis.</p>
           </div>
         ) : (
-          <>
-            <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">No Resumes Found</h2>
-            <p className="text-slate-400 mb-6">Please upload a resume first to compare against top candidates.</p>
-            <label className="cursor-pointer px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-              <FileTextIcon className="w-5 h-5" />
-              Upload Resume
-              <input type="file" className="hidden" accept=".pdf" onChange={handleUpload} />
-            </label>
-            <Link to="/dashboard" className="mt-4 text-slate-500 hover:text-white transition-colors text-sm">
-              Or go back to Dashboard
-            </Link>
-          </>
+          <div className="max-w-3xl mx-auto space-y-8">
+            <div className="text-center space-y-3">
+              <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                Compare Against the Top 1%
+              </h1>
+              <p className="text-slate-400">Upload your resume, pick a target role, and see how you stack up against an ideal candidate.</p>
+            </div>
+
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-3xl p-6 sm:p-8 space-y-6">
+              {!hasResume || showUpload ? (
+                <GlobalResumeUpload
+                  accent="blue"
+                  onUpload={handleUploadResume}
+                  onRetry={retryUpload}
+                  isUploading={isUploading}
+                  uploadProgress={uploadProgress}
+                  uploadError={uploadError}
+                  uploadSuccess={uploadSuccess}
+                />
+              ) : (
+                <ActiveResumeBanner resume={resume!} onReplace={() => setShowUpload(true)} accent="blue" />
+              )}
+
+              <RoleSelector value={localRole} onChange={setLocalRole} accent="blue" label="Target Role" />
+
+              <button
+                onClick={handleCompare}
+                disabled={!hasResume || isLoading}
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+              >
+                <Play className="h-5 w-5 fill-current" /> Run Comparison
+              </button>
+            </div>
+          </div>
         )}
-      </div>
+      </ModuleShell>
     );
   }
 
@@ -159,17 +154,30 @@ export default function ResumeVsTopCandidate() {
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-100 font-sans pb-24 selection:bg-indigo-500/30">
-      {/* Navbar */}
       <nav className="border-b border-slate-800 bg-[#0B1120]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-3">
-          <Link to="/dashboard" className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors"><ArrowLeft className="w-5 h-5" /></Link>
-          <div className="bg-blue-600/20 p-2 rounded-lg border border-blue-500/30">
-            <Target className="w-5 h-5 text-blue-400" />
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/50 hover:border-slate-600 rounded-xl transition-all duration-200 group"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" />
+              <span className="hidden sm:inline">Back to Dashboard</span>
+            </button>
+            <div className="bg-blue-600/20 p-2 rounded-lg border border-blue-500/30">
+              <Target className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <span className="font-bold text-xl tracking-tight text-white block leading-tight">Resume vs Top Candidate</span>
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest">Premium AI Analysis</span>
+            </div>
           </div>
-          <div>
-            <span className="font-bold text-xl tracking-tight text-white block leading-tight">Resume vs Top Candidate</span>
-            <span className="text-[10px] text-slate-400 uppercase tracking-widest">Premium AI Analysis</span>
-          </div>
+          <button
+            onClick={reset}
+            className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-700 hover:border-slate-500 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> New Comparison
+          </button>
         </div>
       </nav>
 
@@ -185,114 +193,22 @@ export default function ResumeVsTopCandidate() {
           </p>
         </div>
 
-        {/* PART 1 & 2: Selectors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-40">
-
-          {/* Resume Selector */}
-          <div className="bg-slate-800/40 border border-slate-700/50 p-6 rounded-2xl">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 block">1. Select Your Resume</label>
-
-            {!isLibraryOpen && activeResume ? (
-              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center">
-                    <FileTextIcon className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <div className="text-white font-bold text-sm truncate w-48">{activeResume.name}</div>
-                    <div className="text-xs text-slate-400">ATS Score: {comparisonResult.atsComparison.userScore}</div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsLibraryOpen(true)}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsLibraryOpen(true)}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-4 font-bold flex justify-center items-center gap-2 transition-colors"
-              >
-                Open Resume Library
-              </button>
-            )}
-
-            {!isLibraryOpen && activeResume && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="text-xs px-2 py-1 bg-slate-700 rounded-md text-slate-300">Exp: {comparisonResult.experienceComparison.userYears} Yrs</span>
-                <span className="text-xs px-2 py-1 bg-slate-700 rounded-md text-slate-300">Skills: {(activeResume.skills || []).length}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Role Selector */}
-          <div className="bg-slate-800/40 border border-slate-700/50 p-6 rounded-2xl relative">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 block">2. Select Target Role</label>
-            <div
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white cursor-pointer flex justify-between items-center"
-              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-            >
-              <span>{targetRole}</span>
-              <Search className="w-5 h-5 text-slate-400" />
+        {/* Active resume & role summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ActiveResumeBanner resume={activeResume} accent="blue" />
+          <div className="bg-slate-800/40 border border-slate-700/50 p-6 rounded-2xl flex flex-col justify-center">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Target Role</p>
+            <p className="text-2xl font-black text-blue-400">{targetRole}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-xs px-2 py-1 bg-slate-700 rounded-md text-slate-300">
+                Match: {comparisonResult.overallMatchScore}%
+              </span>
+              <span className="text-xs px-2 py-1 bg-slate-700 rounded-md text-slate-300">
+                ATS: {comparisonResult.atsComparison.userScore}/100
+              </span>
             </div>
-
-            <AnimatePresence>
-              {showRoleDropdown && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-h-80 overflow-y-auto z-50 p-2"
-                >
-                  <input
-                    type="text" placeholder="Search 300+ roles..." value={searchRole} onChange={(e) => setSearchRole(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white mb-2"
-                    onClick={e => e.stopPropagation()}
-                  />
-                  {CATEGORIZED_ROLES.map((cat, i) => (
-                    <div key={i} className="mb-4">
-                      <div className="text-xs font-bold text-slate-400 uppercase px-3 py-1 bg-slate-900/50 rounded">{cat.category}</div>
-                      {cat.roles.filter(r => r.toLowerCase().includes(searchRole.toLowerCase())).map((role, j) => (
-                        <div
-                          key={j} onClick={() => { setTargetRole(role); setShowRoleDropdown(false); }}
-                          className="px-4 py-2 hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer text-slate-300 text-sm rounded-lg transition-colors"
-                        >
-                          {role}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
-
-        {/* INLINE RESUME LIBRARY */}
-        <AnimatePresence>
-          {isLibraryOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">Your Resume Library</h2>
-                {activeResume && (
-                  <button onClick={() => setIsLibraryOpen(false)} className="text-slate-400 hover:text-white text-sm">
-                    Close Library
-                  </button>
-                )}
-              </div>
-              <ResumeLibrary
-                selectedResumeId={selectedResumeId}
-                onSelectResume={(id) => { selectResume(id); setIsLibraryOpen(false); }}
-                onPreviewResume={(res) => setPreviewResume(res)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* PART 4: OVERALL COMPARISON DASHBOARD */}
         <div className="bg-gradient-to-br from-slate-800/80 to-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
@@ -529,17 +445,6 @@ export default function ResumeVsTopCandidate() {
         </div>
 
       </main>
-
-      {/* PREVIEW MODAL */}
-      <AnimatePresence>
-        {previewResume && (
-          <ResumePreviewModal
-            resume={previewResume}
-            onClose={() => setPreviewResume(null)}
-            onSelect={() => { selectResume(previewResume.id); setIsLibraryOpen(false); setPreviewResume(null); }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

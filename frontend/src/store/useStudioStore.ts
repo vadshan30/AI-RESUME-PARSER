@@ -23,7 +23,7 @@ export const useStudioStore = create<StudioStore>((set, get) => ({
 
   fetchTemplates: async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/studio/templates');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/studio/templates`);
       const res = await response.json();
       set({ templates: res.data });
       if (res.data.length > 0) {
@@ -45,7 +45,7 @@ export const useStudioStore = create<StudioStore>((set, get) => ({
     set({ isDownloading: true, error: null });
 
     try {
-      const response = await fetch(`http://localhost:8000/api/studio/export/${format}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/studio/export/${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +79,7 @@ export const useStudioStore = create<StudioStore>((set, get) => ({
 
   aiRewrite: async (text: string, tone: string) => {
     try {
-      const response = await fetch('http://localhost:8000/api/studio/ai-rewrite', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/studio/ai-rewrite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, tone }),

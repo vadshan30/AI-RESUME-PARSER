@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../services/api';
 import { ArrowLeft, Activity, Search, AlertTriangle, FileSearch, RefreshCw, Loader, CheckCircle2, XCircle } from 'lucide-react';
+import { useResumeStore } from '../store/useResumeStore';
 
 const CircularGauge = ({ percentage, label, colorClass, gradientFrom, gradientTo }) => {
   const [offset, setOffset] = useState(251);
@@ -9,7 +10,7 @@ const CircularGauge = ({ percentage, label, colorClass, gradientFrom, gradientTo
   const circumference = 2 * Math.PI * radius;
 
   useEffect(() => {
-    const progressOffset = circumference - (percentage / 100) * circumference;
+    const progressOffset = circumference - ((percentage || 0) / 100) * circumference;
     setTimeout(() => setOffset(progressOffset), 100);
   }, [percentage, circumference]);
 
@@ -76,10 +77,13 @@ const IssueList = ({ title, items, icon: Icon, colorClass }) => {
 
 const ResumeXRay = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
+  const uploadResume = useResumeStore((s) => s.uploadResume);
 
   const fetchData = async (forceRefresh = false) => {
     try {
@@ -87,14 +91,14 @@ const ResumeXRay = () => {
       else setLoading(true);
       setError(null);
 
-      const activeId = localStorage.getItem('active_resume_id');
+      const activeId = useResumeStore.getState().currentResumeId;
       if (!activeId) {
-        navigate('/dashboard');
+        navigate('/dashboard/upload', { state: { returnTo: location.pathname + location.search } });
         return;
       }
 
       const response = await api.post('/ai/resume-xray', { 
-        resume_id: parseInt(activeId),
+        resume_id: parseInt(activeId, 10),
         refresh: forceRefresh
       });
       setData(response.data);
@@ -108,7 +112,9 @@ const ResumeXRay = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   if (loading && !refreshing) {
@@ -133,6 +139,49 @@ const ResumeXRay = () => {
             <button onClick={() => fetchData(true)} className="px-4 py-2 bg-cyan-600 rounded-lg hover:bg-cyan-500 flex items-center transition-colors">
               <RefreshCw className="h-4 w-4 mr-2" /> Retry Scan
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle explicit invalid resume response from backend
+  if (data.status && data.status === 'invalid') {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-white p-8 flex items-center justify-center">
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl max-w-2xl text-center">
+          <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Unable to Analyze Resume</h2>
+          <p className="text-slate-300 mb-4">{data.reason || 'The uploaded file could not be analyzed.'}</p>
+          {data.improvement_suggestions && (
+            <div className="text-left bg-slate-900/30 p-4 rounded mb-4">
+              <h4 className="font-bold mb-2">Suggestions</h4>
+              <ul className="list-disc pl-5 space-y-1 text-slate-300">
+                {data.improvement_suggestions.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+          )}
+          <div className="flex items-center justify-center space-x-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.doc,.txt"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                try {
+                  await uploadResume(f);
+                  // restart analysis
+                  fetchData(true);
+                } catch (err) {
+                  console.error('Upload failed from XRay page', err);
+                  setError('Upload failed. ' + (err?.message || ''));
+                }
+              }}
+            />
+            <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="px-4 py-2 bg-cyan-600 rounded-lg">Upload New Resume</button>
+            <button onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-slate-800 rounded-lg">Back to Dashboard</button>
           </div>
         </div>
       </div>

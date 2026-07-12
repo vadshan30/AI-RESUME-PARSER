@@ -5,5 +5,9 @@ pymysql
 pdfplumber
 google-genai
 python-dotenv
+spacy==3.6.1
 pydantic
 python-multipart
+pdf2image
+pytesseract
+python-docx

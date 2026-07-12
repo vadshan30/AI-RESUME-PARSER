@@ -18,7 +18,7 @@ export interface CareerTwinData {
     careerProgression: number;
     industryAlignment: number;
     futureReadiness: number;
-    lastUpdated: Date;
+    lastUpdated: string;
   };
   careerPaths: {
     id: string;
@@ -58,80 +58,121 @@ export interface CareerTwinData {
     timeline: string;
   }[];
   timeline: {
-    past: {
-      year: number;
-      title: string;
-      achieved: boolean;
-    }[];
-    future: {
-      year: number;
-      title: string;
-      status: 'Planned' | 'In Progress' | 'Achieved';
-    }[];
+    past: { year: number; title: string; achieved: boolean }[];
+    future: { year: number; title: string; status: 'Planned' | 'In Progress' | 'Achieved' }[];
   };
 }
+
+export type RegenerateStep = 'idle' | 'loading_resume' | 'parsing' | 'generating' | 'done' | 'error';
 
 interface CareerTwinStore {
   careerData: CareerTwinData | null;
   isLoading: boolean;
   error: string | null;
   selectedPath: string | null;
+  regenerateStep: RegenerateStep;
+  dataResumeId: number | null;
+  generatedAt: Date | null;
   generateCareerTwin: (refresh?: boolean) => Promise<void>;
   updatePathSelection: (pathId: string) => void;
   refreshRecommendations: () => Promise<void>;
+  clearData: () => void;
   clearError: () => void;
 }
 
-export const useCareerTwinStore = create<CareerTwinStore>((set) => ({
+function isValidSchema(data: unknown): data is CareerTwinData {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.profile === 'object' &&
+    typeof d.careerHealth === 'object' &&
+    Array.isArray(d.careerPaths) &&
+    (d.careerPaths as unknown[]).length > 0 &&
+    typeof d.skillGaps === 'object' &&
+    Array.isArray(d.recommendations) &&
+    typeof d.timeline === 'object'
+  );
+}
+
+export const useCareerTwinStore = create<CareerTwinStore>((set, get) => ({
   careerData: null,
   isLoading: false,
   error: null,
   selectedPath: null,
+  regenerateStep: 'idle',
+  dataResumeId: null,
+  generatedAt: null,
 
   generateCareerTwin: async (refresh = false) => {
     const resumeId = useResumeStore.getState().currentResumeId;
     if (!resumeId) {
-      set({ error: "Please upload and analyze a resume first." });
+      set({ error: 'Please upload and analyze a resume first.' });
       return;
     }
 
-    set({ isLoading: true, error: null });
+    const { careerData, dataResumeId, isLoading } = get();
+
+    // Only skip if: same resume, valid data, not a forced refresh, not already loading
+    if (!refresh && isValidSchema(careerData) && dataResumeId === resumeId && !isLoading) {
+      return;
+    }
+
+    // If resume changed, clear stale data immediately before showing loader
+    if (dataResumeId !== null && dataResumeId !== resumeId) {
+      set({ careerData: null, selectedPath: null, generatedAt: null });
+    }
+
+    set({ isLoading: true, error: null, regenerateStep: 'loading_resume' });
 
     try {
-      const response = await api.post('/ai/career-twin', {
-        resume_id: resumeId,
-        refresh
-      });
+      set({ regenerateStep: 'parsing' });
+      await new Promise((r) => setTimeout(r, 300));
 
+      set({ regenerateStep: 'generating' });
+      const response = await api.post('/ai/career-twin', { resume_id: resumeId, refresh });
       const data = response.data;
-      const initialPath = data.careerPaths && data.careerPaths.length > 0 ? data.careerPaths[0].id : null;
 
-      set({ careerData: data, selectedPath: initialPath, isLoading: false });
-    } catch (err: any) {
-      set({ error: err.response?.data?.detail || err.message || "Failed to generate AI Career Twin.", isLoading: false });
+      if (!isValidSchema(data)) {
+        throw new Error('AI returned an incomplete response. Please retry.');
+      }
+
+      const initialPath = data.careerPaths[0]?.id ?? null;
+      set({
+        careerData: data,
+        selectedPath: initialPath,
+        isLoading: false,
+        error: null,
+        regenerateStep: 'done',
+        dataResumeId: resumeId,
+        generatedAt: new Date(),
+      });
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
+        (err as { message?: string })?.message ||
+        'Failed to generate AI Career Twin.';
+      set({ error: msg, isLoading: false, regenerateStep: 'error' });
     }
   },
 
-  updatePathSelection: (pathId) => {
-    set({ selectedPath: pathId });
-  },
+  updatePathSelection: (pathId) => set({ selectedPath: pathId }),
 
   refreshRecommendations: async () => {
-    set({ isLoading: true });
-    try {
-      const resumeId = useResumeStore.getState().currentResumeId;
-      if (!resumeId) throw new Error("Missing resume ID");
-      
-      const response = await api.post('/ai/career-twin', {
-        resume_id: resumeId,
-        refresh: true
-      });
-      
-      set({ careerData: response.data, isLoading: false });
-    } catch (err: any) {
-      set({ error: err.message, isLoading: false });
-    }
+    set({ careerData: null, error: null, regenerateStep: 'idle', generatedAt: null });
+    await get().generateCareerTwin(true);
   },
 
-  clearError: () => set({ error: null })
+  // Called by useResumeStore whenever the active resume changes
+  clearData: () =>
+    set({
+      careerData: null,
+      isLoading: false,
+      error: null,
+      selectedPath: null,
+      regenerateStep: 'idle',
+      dataResumeId: null,
+      generatedAt: null,
+    }),
+
+  clearError: () => set({ error: null, regenerateStep: 'idle' }),
 }));

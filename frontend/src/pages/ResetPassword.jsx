@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { resetPassword } from '../services/auth';
 import { Lock, ArrowLeft } from 'lucide-react';
@@ -19,6 +19,7 @@ const ResetPassword = () => {
     const queryParams = new URLSearchParams(location.search);
     const tokenParam = queryParams.get('token');
     if (tokenParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToken(tokenParam);
     } else {
       setError('Invalid or missing reset token.');

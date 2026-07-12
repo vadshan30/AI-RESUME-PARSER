@@ -1,12 +1,16 @@
 import { create } from 'zustand';
+import api from '../services/api';
+import { uploadResumeFile } from '../services/resumeUploadService';
+import { parseUploadError } from '../utils/resumeUpload';
+import { useResumeStore } from './useResumeStore';
 
 export interface SavedResume {
-  id: string | number; // Updated to accept DB IDs
+  id: string | number;
   userId?: string;
   name: string;
   role?: string;
-  skills: any[]; // The DB returns a list of skill objects or strings
-  experience?: any[]; // The DB returns a list of experience objects
+  skills: any[];
+  experience?: any[];
   education?: any[];
   certifications?: any[];
   lastUpdated?: string;
@@ -23,18 +27,14 @@ export interface User {
   avatarUrl?: string;
 }
 
-const mockCurrentUser: User = {
-  id: "user_123",
-  name: "Sri Vadshan",
-  email: "sri@example.com",
-};
+const mockCurrentUser: User | null = null;
 
 interface UserStore {
   currentUser: User | null;
   resumes: SavedResume[];
   isLoading: boolean;
   error: string | null;
-  
+
   setCurrentUser: (user: User | null) => void;
   getResumesForCurrentUser: () => SavedResume[];
   fetchResumes: () => Promise<void>;
@@ -44,91 +44,87 @@ interface UserStore {
   duplicateResume: (resumeId: string | number) => Promise<boolean>;
 }
 
+const apiBase = () => import.meta.env.VITE_API_URL?.trim() || '';
+
 export const useUserStore = create<UserStore>((set, get) => ({
   currentUser: mockCurrentUser,
   resumes: [],
   isLoading: false,
   error: null,
-  
+
   setCurrentUser: (user) => set({ currentUser: user }),
-  
-  getResumesForCurrentUser: () => {
-    // The DB returns all resumes currently since we haven't implemented full multi-tenant auth
-    return get().resumes;
-  },
+
+  getResumesForCurrentUser: () => get().resumes,
 
   fetchResumes: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('http://localhost:8000/resume/');
-      if (!res.ok) throw new Error("Failed to fetch resumes");
-      const data = await res.json();
-      set({ resumes: data, isLoading: false });
-    } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      const res = await api.get('/resume/');
+      const data = res.data as SavedResume[];
+      const storedIds = JSON.parse(sessionStorage.getItem('my_uploaded_resume_ids') || '[]');
+      const myResumes = data.filter((r) => storedIds.includes(r.id));
+      set({ resumes: myResumes, isLoading: false });
+    } catch (err: unknown) {
+      set({ error: parseUploadError(err), isLoading: false });
     }
   },
-  
+
   uploadResume: async (file, targetRole) => {
     set({ isLoading: true, error: null });
-    const formData = new FormData();
-    formData.append("file", file);
-    if (targetRole) formData.append("target_role", targetRole);
-
     try {
-      const res = await fetch('http://localhost:8000/resume/upload', {
-        method: 'POST',
-        body: formData
+      const { resume: newResume } = await uploadResumeFile(file, targetRole);
+      const newHistory = [newResume, ...useResumeStore.getState().history.filter((h) => h.id !== newResume.id)].slice(0, 10);
+      useResumeStore.setState({
+        currentResume: newResume,
+        currentResumeId: newResume.id,
+        history: newHistory,
       });
-      if (!res.ok) throw new Error("Upload failed");
-      const newResume = await res.json();
-      set({ resumes: [...get().resumes, newResume], isLoading: false });
-      return newResume;
-    } catch (err: any) {
-      set({ error: err.message, isLoading: false });
+      set({ resumes: [newResume as SavedResume, ...get().resumes], isLoading: false });
+      return newResume as SavedResume;
+    } catch (err: unknown) {
+      const message = parseUploadError(err);
+      set({ error: message, isLoading: false });
       return null;
     }
   },
-  
+
   deleteResume: async (resumeId) => {
     try {
-      const res = await fetch(`http://localhost:8000/resume/${resumeId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error("Delete failed");
-      set({ resumes: get().resumes.filter(r => r.id !== resumeId) });
+      await api.delete(`/resume/${resumeId}`);
+      const storedIds = JSON.parse(sessionStorage.getItem('my_uploaded_resume_ids') || '[]');
+      const newStoredIds = storedIds.filter((id: number | string) => id !== resumeId);
+      sessionStorage.setItem('my_uploaded_resume_ids', JSON.stringify(newStoredIds));
+      set({ resumes: get().resumes.filter((r) => r.id !== resumeId), isLoading: false });
       return true;
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: parseUploadError(err) });
       return false;
     }
   },
 
   renameResume: async (resumeId, newName) => {
     try {
-      const res = await fetch(`http://localhost:8000/resume/${resumeId}/rename`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName })
-      });
-      if (!res.ok) throw new Error("Rename failed");
-      const updatedResume = await res.json();
-      set({ resumes: get().resumes.map(r => r.id === resumeId ? updatedResume : r) });
+      const res = await api.put(`/resume/${resumeId}/rename`, { name: newName });
+      const updatedResume = res.data;
+      set({ resumes: get().resumes.map((r) => (r.id === resumeId ? updatedResume : r)) });
       return true;
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: parseUploadError(err) });
       return false;
     }
   },
 
   duplicateResume: async (resumeId) => {
     try {
-      const res = await fetch(`http://localhost:8000/resume/${resumeId}/duplicate`, { method: 'POST' });
-      if (!res.ok) throw new Error("Duplicate failed");
-      const duplicatedResume = await res.json();
+      const res = await api.post(`/resume/${resumeId}/duplicate`);
+      const duplicatedResume = res.data;
       set({ resumes: [...get().resumes, duplicatedResume] });
       return true;
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: parseUploadError(err) });
       return false;
     }
-  }
+  },
 }));
+
+export { apiBase };

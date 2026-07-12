@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Rocket, Target, Compass, Clock, CheckCircle2, 
-  Loader, AlertTriangle, RefreshCw, Zap, BookOpen, AlertCircle, TrendingUp
+  Loader, AlertTriangle, RefreshCw, Zap, BookOpen, AlertCircle, TrendingUp, FileText
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useCareerTwinStore, CareerTwinData } from '../store/useCareerTwinStore';
+import { useResumeStore } from '../store/useResumeStore';
 
 const HealthGauge = ({ percentage, label }: { percentage: number, label: string }) => {
   const radius = 40;
@@ -48,14 +49,21 @@ const HealthGauge = ({ percentage, label }: { percentage: number, label: string 
 
 const AICareerTwin = () => {
   const navigate = useNavigate();
-  const { careerData, isLoading, error, generateCareerTwin, refreshRecommendations, selectedPath, updatePathSelection } = useCareerTwinStore();
+  const location = useLocation();
+  const { currentResumeId, currentResume, history, setCurrentResumeId } = useResumeStore();
+  const { careerData, isLoading, error, generateCareerTwin, refreshRecommendations, selectedPath, updatePathSelection, dataResumeId, generatedAt } = useCareerTwinStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'paths' | 'skills' | 'timeline'>('dashboard');
 
+  // Trigger generation whenever the active resume ID changes or data is missing.
+  // Using currentResumeId as the primary dependency ensures a new upload always
+  // causes a re-generation even if careerData is non-null (stale from old resume).
   useEffect(() => {
-    if (!careerData && !isLoading) {
+    if (!currentResumeId) return;
+    // dataResumeId !== currentResumeId means stale data — always regenerate
+    if (!isLoading) {
       generateCareerTwin();
     }
-  }, [careerData, isLoading, generateCareerTwin]);
+  }, [currentResumeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading || (!careerData && !error)) {
     return (
@@ -68,19 +76,57 @@ const AICareerTwin = () => {
     );
   }
 
+  if (!currentResumeId || error === "Please upload and analyze a resume first.") {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-white flex items-center justify-center p-8">
+        <div className="bg-slate-800/40 p-8 rounded-2xl border border-slate-700/50 text-center max-w-md w-full shadow-xl">
+          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4 opacity-80" />
+          <h2 className="text-2xl font-bold text-white mb-2">Select a Resume</h2>
+          <p className="text-slate-400 mb-6 text-sm">You need to select an uploaded resume to generate your Career Twin profile.</p>
+          
+          {history.length > 0 ? (
+            <div className="space-y-4">
+              <select 
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all appearance-none"
+                onChange={(e) => setCurrentResumeId(parseInt(e.target.value))}
+                defaultValue=""
+              >
+                <option value="" disabled>-- Choose a Resume --</option>
+                {history.map((resume) => (
+                  <option key={resume.id} value={resume.id}>
+                    {resume.name} - {resume.filename}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">Select a resume to instantly generate your profile.</p>
+            </div>
+          ) : (
+            <button 
+              onClick={() => navigate('/dashboard/upload', { state: { returnTo: location.pathname + location.search } })}
+              className="px-6 py-3 w-full bg-yellow-600 hover:bg-yellow-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-yellow-600/20"
+            >
+              Upload New Resume
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (error || !careerData) {
     return (
       <div className="min-h-screen bg-[#0B1120] text-white flex items-center justify-center p-8">
-        <div className="bg-red-500/10 p-6 rounded-xl text-center">
+        <div className="bg-red-500/10 p-6 rounded-xl text-center border border-red-500/20">
           <AlertTriangle className="h-10 w-10 text-red-400 mx-auto mb-4" />
           <p className="text-red-400 mb-6">{error || 'Failed to load Twin'}</p>
-          <button onClick={() => generateCareerTwin()} className="px-4 py-2 bg-yellow-600 rounded-lg">Retry</button>
+          <button onClick={() => generateCareerTwin()} className="px-6 py-2 bg-yellow-600 hover:bg-yellow-500 transition-colors font-medium rounded-lg">Retry Generation</button>
         </div>
       </div>
     );
   }
 
   const { profile, careerHealth, careerPaths, skillGaps, recommendations, timeline } = careerData;
+
   const currentPath = careerPaths.find(p => p.id === selectedPath) || careerPaths[0];
 
   const radarData = [
@@ -133,6 +179,32 @@ const AICareerTwin = () => {
             <div>
               <h1 className="text-3xl font-bold text-white tracking-tight">AI Career Twin</h1>
               <p className="text-slate-400 mt-1">Your personalized career intelligence dashboard</p>
+            </div>
+          </div>
+
+          {/* Active Resume Banner */}
+          <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-2xl px-5 py-3">
+            <FileText className="h-5 w-5 text-yellow-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Active Resume</p>
+              <p className="text-sm text-white font-bold truncate max-w-[200px]">
+                {currentResume?.filename || currentResume?.name || `Resume #${currentResumeId}`}
+              </p>
+            </div>
+            <div className="ml-2 shrink-0">
+              {generatedAt ? (
+                <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {Math.floor((Date.now() - generatedAt.getTime()) / 60000) < 1
+                    ? 'Just now'
+                    : `${Math.floor((Date.now() - generatedAt.getTime()) / 60000)}m ago`}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-yellow-400 font-semibold">
+                  <Loader className="h-3.5 w-3.5 animate-spin" />
+                  Generating...
+                </span>
+              )}
             </div>
           </div>
         </header>

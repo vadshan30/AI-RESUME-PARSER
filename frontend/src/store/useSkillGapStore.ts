@@ -100,6 +100,17 @@ interface SkillGapStore {
   clearResults: () => void;
 }
 
+const REQUIRED_KEYS: (keyof SkillGapAnalysis)[] = [
+  'matchScore', 'gapScore', 'summary', 'criticalGaps',
+  'highPriorityGaps', 'mediumPriorityGaps', 'strongSkills', 'radarData',
+  'learningPlan', 'careerImpact'
+];
+
+function isValidSkillGapResponse(data: any): data is SkillGapAnalysis {
+  if (!data || typeof data !== 'object' || data.error || Array.isArray(data)) return false;
+  return REQUIRED_KEYS.every(key => key in data);
+}
+
 export const useSkillGapStore = create<SkillGapStore>()(
   persist(
     (set, get) => ({
@@ -138,14 +149,25 @@ export const useSkillGapStore = create<SkillGapStore>()(
             target_role: targetRole
           });
 
-          set({ gapAnalysisResults: response.data, isLoading: false });
+          if (isValidSkillGapResponse(response.data)) {
+            set({ gapAnalysisResults: response.data, isLoading: false });
+          } else {
+            const missing = REQUIRED_KEYS.filter(k => !(k in (response.data || {})));
+            set({ error: `Received incomplete analysis data. Missing: ${missing.join(', ')}. Please try again.`, isLoading: false });
+          }
         } catch (err: any) {
           set({ error: err.response?.data?.detail || err.message || "Failed to analyze skill gaps.", isLoading: false });
         }
       }
     }),
     {
-      name: 'skill-gap-storage-v5'
+      name: 'skill-gap-storage-v5',
+      partialize: (state) => ({
+        targetRole: state.targetRole,
+        experienceLevel: state.experienceLevel,
+        industry: state.industry,
+        gapAnalysisResults: state.gapAnalysisResults,
+      }),
     }
   )
 );

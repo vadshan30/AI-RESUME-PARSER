@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../services/api';
-import { UploadCloud, FileText, ChevronRight, Activity, Loader, BarChart2, History, ArrowLeft, AlertCircle } from 'lucide-react';
+import { useResumeStore } from '../store/useResumeStore';
+import { parseUploadError } from '../utils/resumeUpload';
+import { UploadCloud, FileText, ChevronRight, Activity, Loader, ArrowLeft, AlertCircle } from 'lucide-react';
 import { ALL_ROLES } from '../data/jobRoles';
 
 const UPLOAD_STEPS = [
@@ -16,7 +18,9 @@ const UPLOAD_STEPS = [
 
 const Upload = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
+  const { uploadResume } = useResumeStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState(null);
@@ -30,7 +34,17 @@ const Upload = () => {
   const [targetRole, setTargetRole] = useState('');
   const [recentResumes, setRecentResumes] = useState([]);
 
+  async function fetchRecentResumes() {
+    try {
+      const response = await api.get('/resume?skip=0&limit=5');
+      setRecentResumes(response.data);
+    } catch (err) {
+      console.error('Failed to fetch recent resumes', err);
+    }
+  }
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRecentResumes();
   }, []);
 
@@ -50,6 +64,7 @@ const Upload = () => {
 
   // Sync step with percentage
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (progressPercent >= 100) setProgressStep(6);
     else if (progressPercent >= 85) setProgressStep(5);
     else if (progressPercent >= 70) setProgressStep(4);
@@ -59,13 +74,27 @@ const Upload = () => {
     else setProgressStep(0);
   }, [progressPercent]);
 
-  const fetchRecentResumes = async () => {
-    try {
-      const response = await api.get('/resume?skip=0&limit=5');
-      setRecentResumes(response.data);
-    } catch (err) {
-      console.error('Failed to fetch recent resumes', err);
+  const resolveReturnTarget = () => {
+    const stateReturnTo = location.state && location.state.returnTo;
+    const queryReturnTo = new URLSearchParams(location.search).get('returnTo');
+    const storedReturnTo = typeof window !== 'undefined'
+      ? window.sessionStorage.getItem('resume_upload_return_to')
+      : null;
+
+    const candidate = stateReturnTo || queryReturnTo || storedReturnTo;
+    if (!candidate || typeof candidate !== 'string') {
+      return '/dashboard/analyze-resume';
     }
+
+    if (candidate === '/dashboard/upload') {
+      return '/dashboard/analyze-resume';
+    }
+
+    if (candidate.startsWith('/dashboard') || candidate.startsWith('/analysis')) {
+      return candidate;
+    }
+
+    return '/dashboard/analyze-resume';
   };
 
   const handleDragOver = (e) => {
@@ -107,43 +136,35 @@ const Upload = () => {
   const handleUpload = async () => {
     if (!file) return;
 
+    const returnTo = resolveReturnTarget();
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('resume_upload_return_to', returnTo);
+    }
+
     // Reset States
     setIsUploading(true);
     setProgressPercent(0);
     setErrorMsg('');
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    if (targetRole.trim()) {
-      formData.append('target_role', targetRole.trim());
-    }
 
     try {
-      console.log("Upload request started...");
-      const response = await api.post('/resume/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      // Force 100% completion before navigating
+      console.log('Upload request started...');
+      const resume = await uploadResume(file, targetRole.trim() || undefined);
       setProgressPercent(100);
-      
+      setIsUploading(false);
+      const destination = returnTo || `/dashboard/analysis/${resume?.id}`;
       setTimeout(() => {
-        navigate(`/dashboard/analysis/${response.data.id}`);
+        if (destination.startsWith('/dashboard/analysis/') && resume?.id) {
+          navigate(destination, { replace: true });
+        } else {
+          navigate(destination, { replace: true });
+        }
       }, 500);
-
     } catch (err) {
       console.error('Upload failed:', err);
       setIsUploading(false);
       setProgressPercent(0);
-      
-      // Determine error message from backend or network
-      if (err.response && err.response.data && err.response.data.detail) {
-        setErrorMsg(`Analysis Failed: ${err.response.data.detail}`);
-      } else if (err.message) {
-        setErrorMsg(`Analysis Failed: ${err.message}`);
-      } else {
-        setErrorMsg('Analysis Failed: Unable to connect to AI service or backend.');
-      }
+      setErrorMsg(parseUploadError(err));
     }
   };
 

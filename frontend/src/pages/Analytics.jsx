@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { FileText, Activity, Star, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, Activity, Star, Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
 
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 
@@ -70,7 +70,7 @@ const Analytics = () => {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="font-bold text-xl text-white flex items-center gap-2">
-              <BarChart2 className="text-indigo-400 w-5 h-5" />
+              <BarChart3 className="text-indigo-400 w-5 h-5" />
               Platform Analytics
             </h1>
           </div>

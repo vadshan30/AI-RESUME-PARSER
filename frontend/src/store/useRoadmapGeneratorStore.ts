@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../services/api';
-import { useResumeStore } from './useResumeStore';
 
 interface RoadmapStore {
   selectedRole: string;
@@ -15,6 +14,19 @@ interface RoadmapStore {
   generateRoadmap: () => Promise<void>;
   clearRoadmap: () => void;
   toggleTaskCompletion: (phaseId: number, taskIndex: number) => void;
+}
+
+function isValidRoadmapData(data: unknown): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.role_name === 'string' &&
+    typeof d.timeline === 'object' && d.timeline !== null &&
+    typeof d.salary_growth === 'object' && d.salary_growth !== null &&
+    Array.isArray(d.phases) &&
+    Array.isArray(d.weekly_plan) &&
+    Array.isArray(d.missing_skills_targeted)
+  );
 }
 
 export const useRoadmapGeneratorStore = create<RoadmapStore>()(
@@ -71,7 +83,12 @@ export const useRoadmapGeneratorStore = create<RoadmapStore>()(
     }),
     {
       name: 'roadmap-generator-storage-v2',
-      partialize: (state) => ({ roadmapData: state.roadmapData, selectedRole: state.selectedRole })
+      partialize: (state) => ({ roadmapData: state.roadmapData, selectedRole: state.selectedRole }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.roadmapData && !isValidRoadmapData(state.roadmapData)) {
+          state.roadmapData = null;
+        }
+      },
     }
   )
 );

@@ -4,7 +4,7 @@ import { JOB_CATEGORIES, ALL_ROLES } from '../../data/jobRoles';
 import { useJobMatchStore } from '../../store/useJobMatchStore';
 
 const JobRoleSelector = () => {
-  const { selectedRole, setSelectedRole } = useJobMatchStore();
+  const { targetRole, setTargetRole } = useJobMatchStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ const JobRoleSelector = () => {
               type="text" 
               className="bg-transparent border-none outline-none text-white font-medium w-full placeholder:text-slate-500"
               placeholder="Search 300+ engineering roles..."
-              value={isOpen ? searchTerm : selectedRole}
+              value={isOpen ? searchTerm : targetRole}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 if (!isOpen) setIsOpen(true);
@@ -67,15 +67,15 @@ const JobRoleSelector = () => {
                       key={role}
                       className="px-6 py-3 hover:bg-blue-500/10 cursor-pointer flex items-center justify-between group transition-colors"
                       onClick={() => {
-                        setSelectedRole(role);
+                        setTargetRole(role);
                         setSearchTerm('');
                         setIsOpen(false);
                       }}
                     >
-                      <span className={`text-sm ${selectedRole === role ? 'text-blue-400 font-bold' : 'text-slate-300 font-medium group-hover:text-blue-300'}`}>
+                      <span className={`text-sm ${targetRole === role ? 'text-blue-400 font-bold' : 'text-slate-300 font-medium group-hover:text-blue-300'}`}>
                         {role}
                       </span>
-                      {selectedRole === role && <Check className="h-4 w-4 text-blue-500" />}
+                      {targetRole === role && <Check className="h-4 w-4 text-blue-500" />}
                     </div>
                   ))}
                 </div>
@@ -90,7 +90,7 @@ const JobRoleSelector = () => {
               <div 
                 className="px-6 py-4 bg-blue-600/20 hover:bg-blue-600/30 cursor-pointer border-t border-blue-500/30 flex items-center justify-between"
                 onClick={() => {
-                  setSelectedRole(searchTerm);
+                  setTargetRole(searchTerm);
                   setSearchTerm('');
                   setIsOpen(false);
                 }}
@@ -106,11 +106,11 @@ const JobRoleSelector = () => {
         )}
       </div>
 
-      {selectedRole && (
+      {targetRole && (
         <div className="mt-4 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">Selected Target Role</p>
-            <p className="text-white font-bold">{selectedRole}</p>
+            <p className="text-white font-bold">{targetRole}</p>
           </div>
           <div className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/30">
             ATS Ready

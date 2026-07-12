@@ -9,6 +9,7 @@ class Resume(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String(255))
+    file_path = Column(String(500), nullable=True)
     name = Column(String(100))
     email = Column(String(150))
     phone = Column(String(50))

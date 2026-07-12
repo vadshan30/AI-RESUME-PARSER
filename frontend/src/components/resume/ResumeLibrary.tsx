@@ -111,7 +111,7 @@ export default function ResumeLibrary({ selectedResumeId, onSelectResume, onPrev
             </p>
             <label className="cursor-pointer px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
               <Upload className="w-5 h-5" /> Upload Resume
-              <input type="file" className="hidden" accept=".pdf" onChange={handleUpload} />
+              <input type="file" className="hidden" accept=".pdf,.doc,.docx,.txt" onChange={handleUpload} />
             </label>
           </>
         )}

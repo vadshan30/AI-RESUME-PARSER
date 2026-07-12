@@ -56,6 +56,7 @@ class ExperienceSchema(ExperienceBase):
 
 class ResumeBase(BaseModel):
     filename: str
+    file_path: Optional[str] = None
     name: str
     email: str
     phone: Optional[str] = None

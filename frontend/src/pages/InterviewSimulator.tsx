@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Mic, Play, Loader, CheckCircle2, 
   AlertTriangle, Target, RefreshCw
 } from 'lucide-react';
 import { useInterviewStore, InterviewConfig } from '../store/useInterviewStore';
+import { useResumeStore } from '../store/useResumeStore';
 import { VoiceInput } from '../components/VoiceInput';
 import { Timer } from '../components/Timer';
 import { VoiceInputService } from '../services/VoiceInputService';
 
 const InterviewSimulator = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { 
     currentSession, isLoading, isRecording,
     startInterview, submitAnswer, nextQuestion, quitSession,
     startRecording, stopRecording
   } = useInterviewStore();
+  const { currentResumeId } = useResumeStore();
 
   const [config, setConfig] = useState<InterviewConfig>({
     role: 'React Developer',
@@ -29,22 +33,46 @@ const InterviewSimulator = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voiceService, setVoiceService] = useState<VoiceInputService | null>(null);
   const [timeTaken, setTimeTaken] = useState(0);
+  const [micError, setMicError] = useState<string | null>(null);
+  
+  // Track the text that was in the box before the current recording session started
+  const baseTextRef = useRef<string | null>(null);
 
   // Setup Voice Service
   useEffect(() => {
+    // Reset recording state on mount to prevent persist bugs
+    if (isRecording) stopRecording();
+
     const service = new VoiceInputService(
-      (transcript) => setAnswerText(prev => {
-        // Merge transcripts cleanly
-        if (!prev) return transcript;
-        if (transcript.startsWith(prev)) return transcript;
-        return prev + ' ' + transcript;
-      }),
-      (error) => console.error(error)
+      (transcript) => {
+        setMicError(null);
+        setAnswerText(prev => {
+          // If we haven't stored a base text yet for this recording session, store what's in the box
+          if (baseTextRef.current === null) {
+            baseTextRef.current = prev;
+          }
+          
+          // The new text should simply be the base text plus the transcript
+          const base = baseTextRef.current || '';
+          const spacer = base && !base.endsWith(' ') ? ' ' : '';
+          return base + spacer + transcript;
+        });
+      },
+      (error) => {
+        console.error(error);
+        setMicError(error);
+        stopRecording();
+      },
+      () => {
+        // Called when recognition stops (by user, browser timeout, or error)
+        // Sync the store so the UI updates
+        stopRecording();
+      }
     );
     setVoiceService(service);
     
     return () => {
-      service.stopListening();
+      service.destroy();
     };
   }, []);
 
@@ -64,17 +92,63 @@ const InterviewSimulator = () => {
     }
   }, [currentSession?.currentQuestionIndex, currentSession?.status]);
 
+  // Stop recording and clear answer when moving to next question
+  useEffect(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+    setAnswerText('');
+    setTimeTaken(0);
+    baseTextRef.current = null;
+    setMicError(null);
+  }, [currentSession?.currentQuestionIndex]);
+
   const handleStart = () => startInterview(config);
 
   const handleSubmit = async () => {
     if (!answerText.trim()) return;
     setIsSubmitting(true);
+    // Stop any active recording before submitting
+    if (isRecording) stopRecording();
     await submitAnswer(answerText, timeTaken);
     setAnswerText('');
     setTimeTaken(0);
+    baseTextRef.current = null;
     setIsSubmitting(false);
     nextQuestion();
   };
+
+  // Resume required before starting a session
+  if (!currentResumeId && !currentSession) {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-slate-200 p-6 md:p-8 font-sans selection:bg-violet-500/30">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <nav className="flex items-center justify-between">
+            <Link to="/dashboard/analyze-resume" className="flex items-center text-slate-400 hover:text-white transition-colors">
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              <span className="font-medium">Back to Intelligence Hub</span>
+            </Link>
+          </nav>
+
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-8 text-center">
+            <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-violet-500/10 flex items-center justify-center">
+              <Mic className="h-10 w-10 text-violet-400" />
+            </div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Upload Your Resume</h1>
+            <p className="text-slate-400 mt-4 max-w-xl mx-auto">
+              A resume is required to generate interview questions tailored to your profile. Upload once and return directly to Interview Simulator.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard/upload', { state: { returnTo: location.pathname + location.search } })}
+              className="mt-8 px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors shadow-lg shadow-violet-500/20"
+            >
+              Upload Resume
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. CONFIGURATION VIEW
   if (!currentSession) {
@@ -151,7 +225,7 @@ const InterviewSimulator = () => {
              <button onClick={quitSession} className="text-sm font-medium flex items-center text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="h-4 w-4 mr-2" /> Quit Session
             </button>
-            <Timer duration={question.timeLimit} />
+            <Timer duration={300} />
           </div>
 
           <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-8 relative overflow-hidden">
@@ -167,7 +241,7 @@ const InterviewSimulator = () => {
                 Question {currentSession.currentQuestionIndex + 1} of {currentSession.questions.length}
               </span>
               <span className="px-3 py-1 bg-slate-700/50 text-slate-300 rounded-full text-xs font-bold uppercase tracking-wide">
-                {question.category}
+                {question.type}
               </span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
                 question.difficulty === 'Easy' ? 'bg-emerald-500/20 text-emerald-400' :
@@ -191,11 +265,27 @@ const InterviewSimulator = () => {
               />
 
               <div className="flex items-center justify-between">
-                <VoiceInput 
-                  isRecording={isRecording}
-                  onToggleRecording={() => isRecording ? stopRecording() : startRecording()}
-                  onTranscript={(text) => setAnswerText(text)} // Backup
-                />
+                <div className="flex flex-col gap-2">
+                  <VoiceInput 
+                    isRecording={isRecording}
+                    onToggleRecording={() => {
+                      setMicError(null);
+                      if (isRecording) {
+                        stopRecording();
+                      } else {
+                        baseTextRef.current = null;
+                        startRecording();
+                      }
+                    }}
+                    onTranscript={(text) => setAnswerText(text)} // Backup
+                  />
+                  {micError && (
+                    <div className="text-rose-400 text-xs flex items-center bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 max-w-xs">
+                      <AlertTriangle className="h-4 w-4 mr-2 shrink-0" />
+                      {micError}
+                    </div>
+                  )}
+                </div>
 
                 <button 
                   onClick={handleSubmit}
@@ -265,7 +355,7 @@ const InterviewSimulator = () => {
                   <div>
                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expected Concept</h4>
                     <p className="text-emerald-400/80 bg-emerald-500/5 p-4 rounded-lg text-sm border border-emerald-500/10">
-                      {question?.expectedAnswer}
+                      {question?.sampleAnswer}
                     </p>
                   </div>
                 </div>

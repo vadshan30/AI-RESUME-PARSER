@@ -1,4 +1,3 @@
-import React from 'react';
 import AICareerInsights from './AICareerInsights';
 
 const CareerInsights = () => {

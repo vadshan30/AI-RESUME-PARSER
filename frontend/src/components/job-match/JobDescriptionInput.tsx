@@ -72,7 +72,7 @@ const JobDescriptionInput = () => {
 
       {error && (
         <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center text-sm text-red-400">
-          <AlertCircle className="h-4 w-4 mr-2 shrink-0" /> {error}
+          <AlertCircle className="h-4 w-4 mr-2 shrink-0" /> {typeof error === 'string' ? error : error.reason || 'An error occurred'}
         </div>
       )}
 
@@ -101,7 +101,7 @@ const JobDescriptionInput = () => {
                 <div>
                   <p className="text-xs text-slate-500 mb-2 font-medium">Core Technical Skills</p>
                   <div className="flex flex-wrap gap-2">
-                    {extractedJD.requiredSkills.map(s => (
+                    {extractedJD.requiredSkills.map((s: string) => (
                       <span key={s} className="px-2.5 py-1 bg-indigo-500/10 text-indigo-300 text-xs font-bold rounded-md border border-indigo-500/20">
                         {s}
                       </span>
@@ -113,7 +113,7 @@ const JobDescriptionInput = () => {
                 <div>
                   <p className="text-xs text-slate-500 mb-2 font-medium">Soft Skills & Competencies</p>
                   <div className="flex flex-wrap gap-2">
-                    {extractedJD.softSkills.map(s => (
+                    {extractedJD.softSkills.map((s: string) => (
                       <span key={s} className="px-2.5 py-1 bg-slate-800 text-slate-400 text-xs font-bold rounded-md border border-slate-700">
                         {s}
                       </span>

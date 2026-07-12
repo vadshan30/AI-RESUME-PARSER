@@ -1,295 +1,466 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
+import {
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
 } from 'recharts';
-import { 
-  ArrowLeft, Globe, Briefcase, TrendingUp, Cpu, Award, Target, FileText, 
-  AlertTriangle, Loader, ChevronRight, Activity, BookOpen, Star, Sparkles
+import {
+  Globe, Briefcase, TrendingUp, Target, Award, BookOpen, Clock,
+  AlertTriangle, Loader, Activity, RefreshCw, DollarSign, Compass,
+  CheckCircle, XCircle, Zap, Star, ArrowRight, Upload,
 } from 'lucide-react';
-import { useInsightsStore } from '../store/useInsightsStore';
-import { useUserStore } from '../store/useUserStore';
+import { useCareerIntelligenceStore } from '../store/useCareerIntelligenceStore';
+import { useActiveResume } from '../hooks/useActiveResume';
+import { ModuleShell } from '../components/resume/ModuleShell';
+import { GlobalResumeUpload } from '../components/resume/GlobalResumeUpload';
+import { ActiveResumeBanner } from '../components/resume/ActiveResumeBanner';
+import { RoleSelector } from '../components/resume/RoleSelector';
+
+const CircularGauge = ({ score, title, colorClass }: { score: number; title: string; colorClass: string }) => {
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  return (
+    <div className="flex flex-col items-center p-4">
+      <div className="relative w-28 h-28 mb-2">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+          <circle className="text-slate-800" strokeWidth="8" stroke="currentColor" fill="transparent" r={radius} cx="60" cy="60" />
+          <circle
+            className={colorClass}
+            strokeWidth="8"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            stroke="currentColor"
+            fill="transparent"
+            r={radius}
+            cx="60"
+            cy="60"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-3xl font-black ${colorClass}`}>{score}</span>
+        </div>
+      </div>
+      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{title}</h3>
+    </div>
+  );
+};
 
 const AICareerInsights = () => {
-  const { isAnalyzing, error, insightsData, analyzeInsights, clearInsights } = useInsightsStore();
-  const { getResumesForCurrentUser } = useUserStore();
-  
-  const resumes = getResumesForCurrentUser();
-  const activeResume = resumes[0]; // Just picking the first one for demonstration
+  const {
+    selectedRole,
+    setSelectedRole,
+    analyzeCareer,
+    isAnalyzing,
+    error,
+    analysisData,
+    clearAnalysis,
+  } = useCareerIntelligenceStore();
 
-  const handleAnalyze = () => {
-    // If no active resume, use a mock for the demo
-    const resumeData = activeResume || {
-      skills: ["Python", "JavaScript", "React", "Docker", "AWS", "Machine Learning", "FastAPI"]
-    };
-    analyzeInsights(resumeData);
+  const {
+    resume,
+    hasResume,
+    isInitializing,
+    isUploading,
+    uploadProgress,
+    uploadError,
+    uploadSuccess,
+    handleUpload,
+    retryUpload,
+  } = useActiveResume({ targetRole: selectedRole });
+
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+
+  const handleAnalyze = async () => {
+    if (!hasResume) return;
+    await analyzeCareer();
   };
 
-  const dnaData = insightsData ? [
-    { subject: 'Innovation', A: insightsData.dna['Innovation'] },
-    { subject: 'Leadership', A: insightsData.dna['Leadership'] },
-    { subject: 'Technical', A: insightsData.dna['Technical Depth'] },
-    { subject: 'Problem Solving', A: insightsData.dna['Problem Solving'] },
-    { subject: 'Communication', A: insightsData.dna['Communication'] },
-    { subject: 'Adaptability', A: insightsData.dna['Adaptability'] },
-  ] : [];
+  const handleUploadOnly = async (file: File) => {
+    clearAnalysis();
+    setUploadDone(false);
+    const uploaded = await handleUpload(file, selectedRole || 'General');
+    setShowUpload(false);
+    if (uploaded) {
+      setUploadDone(true);
+    }
+  };
+
+  const handleNewAnalysis = () => {
+    clearAnalysis();
+    setUploadDone(false);
+  };
+
+  const analysis = analysisData?.analysis;
+
+  const renderRadarChart = () => {
+    const radar = analysis?.progress_bars;
+    if (!radar || typeof radar !== 'object') return null;
+    const data = Object.entries(radar).map(([key, score]) => ({
+      subject: key,
+      score: score as number,
+    }));
+    if (data.length === 0) return null;
+    return (
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+            <PolarGrid stroke="#334155" />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+            <Radar name="Proficiency" dataKey="score" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.3} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-100 font-sans selection:bg-indigo-500/30 pb-20">
-      <nav className="border-b border-slate-800 bg-[#0B1120]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600/20 p-2 rounded-lg border border-indigo-500/30">
-              <Globe className="h-5 w-5 text-indigo-400" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">Enterprise Career Intelligence</span>
-          </div>
-          <Link to="/dashboard" className="text-sm font-medium flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {!insightsData ? (
-          <div className="max-w-3xl mx-auto mt-20 text-center space-y-8">
-            <div className="inline-flex items-center justify-center p-4 bg-indigo-500/10 rounded-full mb-4">
-              <Sparkles className="h-12 w-12 text-indigo-400" />
-            </div>
-            <h1 className="text-5xl font-black text-white tracking-tight">Global Career <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Intelligence</span></h1>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              We analyze your resume against 500+ global careers simultaneously to extract your unique Career DNA, predict salary trajectories, and identify your absolute strongest market fits.
-            </p>
-
-            <div className="bg-slate-800/40 p-8 rounded-3xl border border-slate-700/50 shadow-2xl max-w-md mx-auto">
-              {!activeResume && (
-                 <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start text-amber-400 text-sm font-medium text-left">
-                   <AlertTriangle className="h-5 w-5 mr-3 shrink-0 mt-0.5" /> 
-                   No resume uploaded. We will use a mock profile (Full Stack / AI) to demonstrate the intelligence center.
-                 </div>
-              )}
-
-              <button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/20"
-              >
-                {isAnalyzing ? <Loader className="h-5 w-5 animate-spin" /> : <Activity className="h-5 w-5" />}
-                {isAnalyzing ? "Scanning 500+ Roles..." : "Run Global Analysis"}
-              </button>
-
-              {error && (
-                <p className="mt-4 text-sm text-rose-400 flex justify-center items-center"><AlertTriangle className="h-4 w-4 mr-2" /> {error}</p>
-              )}
-            </div>
+    <ModuleShell icon={Globe} title="Career Insights" subtitle="AI-powered career paths, salary, and market intelligence" accent="purple" showBackButton>
+      {!analysisData ? (
+        isInitializing ? (
+          <div className="flex flex-col items-center py-20">
+            <Loader className="h-10 w-10 text-indigo-500 animate-spin mb-4" />
+            <p className="text-slate-400 text-sm">Loading resume…</p>
           </div>
         ) : (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            
-            {/* Header / Primary Domain */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-              <div>
-                <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center">
-                  <Star className="h-4 w-4 mr-2" /> Primary Career Domain
-                </h2>
-                <h1 className="text-4xl font-black text-white">{insightsData.primary_domain} Engineering</h1>
+          <div className="max-w-3xl mx-auto space-y-8">
+            <div className="text-center space-y-3">
+              <div className="inline-flex p-4 bg-indigo-500/10 rounded-full mb-2">
+                <Star className="h-10 w-10 text-indigo-400" />
               </div>
-              <button onClick={clearInsights} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-colors border border-slate-700">
-                New Analysis
-              </button>
+              <h1 className="text-4xl font-black text-white tracking-tight">
+                Global Career <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Intelligence</span>
+              </h1>
+              <p className="text-slate-400 max-w-2xl mx-auto">
+                Analyze your resume to discover career paths, salary predictions, industry demand, and personalized growth recommendations.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
-              {/* Left Column: DNA and Readiness */}
-              <div className="lg:col-span-4 space-y-8">
-                
-                {/* Career DNA Radar */}
-                <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-700/50">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center"><Target className="h-5 w-5 mr-2 text-indigo-400" /> Your Career DNA</h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={dnaData}>
-                        <PolarGrid stroke="#334155" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 'bold' }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <Radar name="DNA" dataKey="A" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.3} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {dnaData.map(d => (
-                      <div key={d.subject} className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">{d.subject}</span>
-                        <span className="font-bold text-white">{d.A}%</span>
+            <div className="bg-slate-800/40 p-6 sm:p-8 rounded-3xl border border-slate-700/50 shadow-2xl space-y-6">
+              {!hasResume || showUpload ? (
+                <GlobalResumeUpload
+                  accent="purple"
+                  onUpload={handleUploadOnly}
+                  onRetry={retryUpload}
+                  isUploading={isUploading}
+                  uploadProgress={uploadProgress}
+                  uploadError={uploadError}
+                  uploadSuccess={uploadSuccess}
+                  description="Upload your resume to unlock dynamic career analysis — no redirect needed."
+                />
+              ) : (
+                <>
+                  <ActiveResumeBanner resume={resume!} onReplace={() => {
+                    setUploadDone(false);
+                    setShowUpload(true);
+                  }} accent="purple" />
+
+                  {/* Upload success message */}
+                  {uploadDone && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3"
+                    >
+                      <div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center shrink-0">
+                        <CheckCircle className="h-4 w-4 text-emerald-400" />
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Readiness Metrics */}
-                <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-700/50 space-y-5">
-                  <h3 className="text-lg font-bold text-white mb-2 flex items-center"><Activity className="h-5 w-5 mr-2 text-emerald-400" /> Career Readiness</h3>
-                  
-                  <div>
-                    <div className="flex justify-between text-sm mb-1"><span className="text-slate-400">Overall Readiness</span><span className="font-bold text-white">{insightsData.readiness.overall}%</span></div>
-                    <div className="w-full bg-slate-900 rounded-full h-2"><div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${insightsData.readiness.overall}%` }}></div></div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1"><span className="text-slate-400">Technical Competence</span><span className="font-bold text-white">{insightsData.readiness.technical}%</span></div>
-                    <div className="w-full bg-slate-900 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${insightsData.readiness.technical}%` }}></div></div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1"><span className="text-slate-400">ATS Score</span><span className="font-bold text-white">{insightsData.readiness.ats_score}%</span></div>
-                    <div className="w-full bg-slate-900 rounded-full h-2"><div className="bg-amber-500 h-2 rounded-full" style={{ width: `${insightsData.readiness.ats_score}%` }}></div></div>
-                  </div>
-                </div>
-
-                {/* Success Probability */}
-                <div className="bg-indigo-500/10 p-6 rounded-3xl border border-indigo-500/20">
-                  <h3 className="text-lg font-bold text-indigo-400 mb-4">Probability of Success</h3>
-                  <div className="flex items-end gap-4">
-                    <div className="text-4xl font-black text-white">{insightsData.success_probability.current}%</div>
-                    <div className="text-sm text-slate-400 mb-1">Current Base Chance</div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-indigo-500/20 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-indigo-300">After Upskilling</span>
-                      <span className="font-bold text-emerald-400">~{insightsData.success_probability.after_upskilling}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-indigo-300">After Portfolio Prep</span>
-                      <span className="font-bold text-emerald-400">~{insightsData.success_probability.after_portfolio}%</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Right Column: Top Matches, Salaries, Timeline */}
-              <div className="lg:col-span-8 space-y-8">
-                
-                {/* Top Matches Feed */}
-                <div className="bg-slate-800/40 p-8 rounded-3xl border border-slate-700/50">
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <h3 className="text-2xl font-bold text-white flex items-center"><Cpu className="h-6 w-6 mr-3 text-indigo-400" /> Top 10 Career Matches</h3>
-                      <p className="text-sm text-slate-400 mt-1">Out of 500+ analyzed global roles.</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {insightsData.top_matches.map((match: any, idx: number) => (
-                      <div key={idx} className="bg-slate-900/50 p-5 rounded-2xl border border-slate-700/50 hover:border-indigo-500/50 transition-colors group">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-white text-lg group-hover:text-indigo-400 transition-colors">{match.role}</h4>
-                          <span className={`px-2 py-1 rounded text-xs font-black ${
-                            match.match_percentage >= 90 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            match.match_percentage >= 80 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                            'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          }`}>
-                            {match.match_percentage}%
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 line-clamp-2">{match.reason}</p>
+                      <div>
+                        <p className="text-sm font-bold text-emerald-300">Resume uploaded successfully</p>
+                        <p className="text-xs text-emerald-400/70 mt-0.5">
+                          {resume?.name || 'Resume'} ready. Click <strong>Run Career Analysis</strong> to generate personalized insights.
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                    </motion.div>
+                  )}
+
+                  <RoleSelector
+                    value={selectedRole}
+                    onChange={setSelectedRole}
+                    accent="purple"
+                    label="Target Career (optional — leave blank for general analysis)"
+                    placeholder="Search roles or leave empty for broad analysis"
+                  />
+
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing}
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/20"
+                  >
+                    {isAnalyzing ? <Loader className="h-5 w-5 animate-spin" /> : <Activity className="h-5 w-5" />}
+                    {isAnalyzing ? 'Analyzing career profile…' : 'Run Career Analysis'}
+                  </button>
+                </>
+              )}
+
+              {error && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center text-sm text-rose-400">
+                  <AlertTriangle className="h-4 w-4 mr-2 shrink-0" /> {error}
                 </div>
+              )}
+            </div>
+          </div>
+        )
+      ) : (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+          {/* ── HEADER ── */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+            <div>
+              <h2 className="text-3xl font-black text-white">{analysisData.target_career?.role_name || 'Career Profile'}</h2>
+              <p className="text-slate-400 mt-1">{analysisData.target_career?.category} • Dynamic AI Career Report</p>
+            </div>
+            <button
+              onClick={handleNewAnalysis}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" /> New Analysis
+            </button>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Salary Intelligence */}
-                  <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-700/50">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center"><Globe className="h-5 w-5 mr-2 text-blue-400" /> Global Salary Bands</h3>
-                    <div className="space-y-4">
-                      {Object.entries(insightsData.salary_intelligence).map(([region, bands]: [string, any]) => (
-                        <div key={region}>
-                          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{region}</div>
-                          <div className="flex justify-between text-sm bg-slate-900 p-2 rounded-lg border border-slate-800">
-                            <div className="text-center"><div className="text-[10px] text-slate-500 mb-0.5">ENTRY</div><div className="text-slate-300">{bands.Entry}</div></div>
-                            <div className="text-center"><div className="text-[10px] text-slate-500 mb-0.5">MID</div><div className="text-blue-400 font-bold">{bands.Mid}</div></div>
-                            <div className="text-center"><div className="text-[10px] text-slate-500 mb-0.5">SENIOR</div><div className="text-emerald-400 font-bold">{bands.Senior}</div></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Market Demand */}
-                  <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-700/50">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center"><TrendingUp className="h-5 w-5 mr-2 text-rose-400" /> Market Intelligence</h3>
-                    <div className="space-y-4">
-                      {Object.entries(insightsData.market_demand).map(([key, val]: [string, any]) => (
-                        <div key={key} className="flex justify-between items-center border-b border-slate-700/50 pb-2 last:border-0">
-                          <span className="text-sm text-slate-400 capitalize">{key.replace('_', ' ')}</span>
-                          <span className="text-sm font-bold text-white">{val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Career Trajectory Timeline */}
-                <div className="bg-slate-800/40 p-8 rounded-3xl border border-slate-700/50">
-                  <h3 className="text-xl font-bold text-white mb-8 flex items-center"><Briefcase className="h-6 w-6 mr-3 text-amber-400" /> Projected Career Trajectory</h3>
-                  <div className="relative">
-                    <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-slate-700 rounded-full"></div>
-                    <div className="space-y-6 relative">
-                      {insightsData.timeline.map((stage: any, idx: number) => (
-                        <div key={idx} className="flex gap-6">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-[#0B1120] ${idx === 0 ? 'bg-amber-400' : 'bg-slate-600'}`}>
-                            <div className="w-2 h-2 rounded-full bg-[#0B1120]"></div>
-                          </div>
-                          <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 flex-1">
-                            <div className="flex justify-between items-center mb-1">
-                              <h4 className="font-bold text-white">{stage.title}</h4>
-                              <span className="text-xs px-2 py-1 bg-slate-800 text-slate-400 rounded font-bold">{stage.years}</span>
-                            </div>
-                            <p className="text-sm text-slate-400">{stage.milestone}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Advice & Certifications */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/20">
-                    <h3 className="text-lg font-bold text-emerald-400 mb-4 flex items-center"><Award className="h-5 w-5 mr-2" /> Recommended Certifications</h3>
-                    <div className="space-y-3">
-                      {insightsData.certifications.map((cert: any, idx: number) => (
-                        <div key={idx} className="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-                          <h4 className="font-bold text-white text-sm mb-2">{cert.name}</h4>
-                          <div className="flex gap-2 text-[10px] font-bold">
-                            <span className="px-2 py-0.5 bg-slate-800 text-slate-400 rounded">{cert.difficulty}</span>
-                            <span className="px-2 py-0.5 bg-slate-800 text-slate-400 rounded">{cert.time}</span>
-                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">ROI: {cert.impact}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20">
-                    <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center"><BookOpen className="h-5 w-5 mr-2" /> Personal AI Mentor Notes</h3>
-                    <ul className="space-y-4">
-                      {insightsData.ai_advice.map((advice: string, idx: number) => (
-                        <li key={idx} className="text-sm text-slate-300 flex items-start">
-                          <ChevronRight className="h-4 w-4 mr-2 text-blue-500 shrink-0 mt-0.5" /> {advice}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
+          {/* ── SECTION 1: CAREER READINESS + RADAR ── */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div className="md:col-span-8 bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-400" /> Career Readiness
+              </h3>
+              <div className="flex flex-wrap justify-around gap-2">
+                <CircularGauge score={analysis?.readiness?.overall || 0} title="Overall" colorClass="text-indigo-400" />
+                <CircularGauge score={analysis?.readiness?.technical || 0} title="Technical" colorClass="text-emerald-400" />
+                <CircularGauge score={analysis?.readiness?.industry || 0} title="Experience" colorClass="text-purple-400" />
+                <CircularGauge score={analysis?.readiness?.interview || 0} title="Soft Skills" colorClass="text-amber-400" />
               </div>
             </div>
-          </motion.div>
-        )}
-      </main>
-    </div>
+            <div className="md:col-span-4 bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6">
+              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">Skill Balance</h3>
+              {renderRadarChart()}
+            </div>
+          </div>
+
+          {/* ── SECTION 2: CRITICAL GAPS ── */}
+          {(analysis?.critical_gaps || []).length > 0 && (
+            <div className="bg-slate-900/50 border border-rose-500/30 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
+                <XCircle className="h-5 w-5" /> Critical Gaps
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {analysis.critical_gaps.map((gap: any, i: number) => (
+                  <div key={i} className="bg-slate-900/80 border border-rose-500/20 rounded-2xl p-4 relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${gap.priority === 'Critical' ? 'bg-rose-500' : gap.priority === 'High' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <h4 className="font-bold text-white mb-2">{gap.skill}</h4>
+                    <p className="text-xs text-slate-400 mb-2">{gap.reason}</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className={`px-2 py-0.5 rounded ${gap.priority === 'Critical' ? 'bg-rose-500/10 text-rose-300' : gap.priority === 'High' ? 'bg-amber-500/10 text-amber-300' : 'bg-blue-500/10 text-blue-300'}`}>{gap.priority}</span>
+                      <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded">{gap.industry_demand} Demand</span>
+                      <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-300 rounded">ATS {gap.ats_impact}</span>
+                    </div>
+                    {(gap.companies_requiring || []).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {gap.companies_requiring.map((c: string) => (
+                          <span key={c} className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{c}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 3: HIGH PRIORITY ITEMS ── */}
+          {(analysis?.high_priority_items || []).length > 0 && (
+            <div className="bg-slate-900/50 border border-amber-500/30 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+                <Zap className="h-5 w-5" /> High Priority Actions
+              </h3>
+              <div className="space-y-3">
+                {analysis.high_priority_items.map((item: any, i: number) => (
+                  <div key={i} className="flex items-start gap-3 bg-slate-900/80 border border-slate-700/50 rounded-xl p-4">
+                    <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${item.effort === 'Critical' ? 'bg-rose-500' : item.effort === 'High' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white">{item.priority}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{item.reason}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${item.effort === 'Critical' ? 'bg-rose-500/10 text-rose-300' : item.effort === 'High' ? 'bg-amber-500/10 text-amber-300' : 'bg-blue-500/10 text-blue-300'}`}>
+                      {item.effort}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 4: OPTIONAL SKILLS ── */}
+          {(analysis?.optional_skills || []).length > 0 && (
+            <div className="bg-slate-900/50 border border-slate-700/50 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-slate-300 mb-4 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" /> Optional Skills
+                <span className="text-xs font-normal text-slate-500 ml-2">Role-specific skills that add value</span>
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {analysis.optional_skills.map((s: string) => (
+                  <span key={s} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-sm rounded-lg border border-slate-700">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 5: INDUSTRY DEMAND + SALARY ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-emerald-400" /> Industry Demand
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(analysisData.target_career?.industry_demand || {}).map(([key, value]) => (
+                  <div key={key} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-sm capitalize">{String(key).replace(/_/g, ' ')}</span>
+                    <span className="text-emerald-400 font-bold">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-400" /> Salary Predictions
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(analysisData.target_career?.salary_range || {}).map(([region, range]) => (
+                  <div key={region} className="p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{region}</span>
+                    <span className="text-white font-bold text-sm">{String(range)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECTION 6: RECOMMENDED CERTIFICATIONS ── */}
+          {(analysis?.certifications || []).length > 0 && (
+            <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-indigo-400 mb-4 flex items-center gap-2">
+                <Award className="h-5 w-5" /> Recommended Certifications
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {analysis.certifications.map((cert: any, i: number) => (
+                  <div key={i} className="bg-slate-900/80 border border-slate-700 rounded-2xl p-5 relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${cert.career_impact === 'Very High' ? 'bg-rose-500' : cert.career_impact === 'High' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="font-bold text-white text-sm flex-1 pr-2">{cert.name}</h4>
+                      <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded shrink-0">{cert.difficulty}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className="text-[10px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {cert.duration || '2 months'}
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded">{cert.career_impact} Impact</span>
+                      {cert.ats_score_improvement && (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded">ATS {cert.ats_score_improvement}</span>
+                      )}
+                    </div>
+                    {(cert.free_resources || []).length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Free Resources</p>
+                        <div className="flex flex-wrap gap-1">
+                          {cert.free_resources.map((r: string) => (
+                            <span key={r} className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(cert.paid_resources || []).length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-amber-400 font-bold uppercase mb-1">Paid Resources</p>
+                        <div className="flex flex-wrap gap-1">
+                          {cert.paid_resources.map((r: string) => (
+                            <span key={r} className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Learning Plan */}
+          {analysisData.target_career?.learning_recommendations && Object.keys(analysisData.target_career.learning_recommendations).length > 0 && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+                <BookOpen className="h-5 w-5" /> Learning Plan
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {Object.entries(analysisData.target_career.learning_recommendations).map(([skill, details]: [string, any]) => (
+                  <div key={skill} className="bg-slate-900/80 border border-slate-700 rounded-2xl p-5 relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${details.priority === 'Critical' ? 'bg-rose-500' : details.priority === 'High' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-white">{skill}</h4>
+                      <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {details.hours || details.estimated_time || '4 weeks'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400">{details.why || details.reason || ''}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 7: ALTERNATIVE CAREER PATHS ── */}
+          {(analysis?.transitions || []).length > 0 && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+                <Compass className="h-5 w-5" /> Alternative Career Paths
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {analysis.transitions.map((t: any, i: number) => (
+                  <div key={i} className="p-5 bg-slate-900/80 rounded-2xl border border-slate-700">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-white flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-blue-400" /> {t.role}
+                      </h4>
+                      {t.match_percent > 0 && (
+                        <span className="text-xs bg-emerald-500/10 text-emerald-300 px-2 py-1 rounded font-bold">{t.match_percent}%</span>
+                      )}
+                    </div>
+                    {t.reason && <p className="text-xs text-slate-400 mb-3">{t.reason}</p>}
+                    {(t.added_skills || []).length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Skills to Add</p>
+                        <div className="flex flex-wrap gap-1">
+                          {t.added_skills.map((s: string) => (
+                            <span key={s} className="px-2 py-1 bg-blue-500/10 text-blue-300 text-xs rounded border border-blue-500/20">{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 8: RISK FACTORS ── */}
+          {(analysis?.risk_factors || []).length > 0 && (
+            <div className="bg-rose-500/5 border border-rose-500/20 rounded-3xl p-6">
+              <h3 className="text-lg font-bold text-rose-400 mb-4 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" /> Career Risk Factors
+              </h3>
+              <div className="space-y-2">
+                {analysis.risk_factors.map((factor: string, i: number) => (
+                  <div key={i} className="flex items-start gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                    <ArrowRight className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                    <span className="text-sm text-slate-300">{factor}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </ModuleShell>
   );
 };
 

@@ -6,10 +6,12 @@ def create_resume(db: Session, resume_data: ResumeCreate):
     # 1. Create the base Resume
     db_resume = Resume(
         filename=resume_data.filename,
+        file_path=resume_data.file_path,
         name=resume_data.name,
         email=resume_data.email,
         phone=resume_data.phone,
-        resume_score=resume_data.resume_score
+        resume_score=resume_data.resume_score,
+        analysis_data=resume_data.analysis_data
     )
     db.add(db_resume)
     db.commit()
@@ -73,6 +75,7 @@ def duplicate_resume(db: Session, resume_id: int):
     
     db_resume = Resume(
         filename=original.filename,
+        file_path=original.file_path,
         name=f"{original.name} (Copy)",
         email=original.email,
         phone=original.phone,

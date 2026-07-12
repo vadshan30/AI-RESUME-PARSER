@@ -76,7 +76,12 @@ export const useInterviewStore = create<InterviewStore>()(
           let aiQuestions: InterviewQuestion[] = [];
           
           if (resumeId) {
-             const response = await api.post('/ai/interview-simulator', { resume_id: resumeId, refresh: false });
+             const response = await api.post('/ai/interview-simulator', { 
+               resume_id: resumeId, 
+               refresh: false,
+               target_role: config.role,
+               difficulty: config.difficulty
+             });
              const data = response.data;
              
              const mapToQuestion = (q: any, type: 'Technical' | 'Behavioral' | 'System Design'): InterviewQuestion => ({
