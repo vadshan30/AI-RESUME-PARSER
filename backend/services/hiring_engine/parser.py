@@ -1,6 +1,5 @@
 import json
 import logging
-import spacy
 from typing import Optional
 from backend.ai.providers.gemini_provider import GeminiProvider
 from .models import JobDescriptionData
