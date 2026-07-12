@@ -1,12 +1,8 @@
-import spacy
 import re
 import os
 import math
 from collections import Counter
 from backend.parsers.pdf_extractor import extract_text_from_file
-
-nlp = spacy.load("en_core_web_sm")
-
 
 # -------------------------------
 # PDF TEXT EXTRACTION
@@ -23,7 +19,7 @@ def _safe_lower_words(text: str):
     return [w.strip('.,:;()[]') for w in re.split(r"\s+", (text or '').lower()) if w.strip()]
 
 
-def validate_resume_text(text: str) -> (bool, str):
+def validate_resume_text(text: str):
     if not text or len(text.strip()) == 0:
         return False, "No text extracted from the file"
     if len(text.strip()) < 80:
@@ -58,7 +54,7 @@ def detect_sections(text: str) -> dict:
     return found
 
 
-def completeness_score(sections: dict) -> (int, list):
+def completeness_score(sections: dict):
     total = len(sections)
     present = sum(1 for v in sections.values() if v)
     missing = [k.title() for k, v in sections.items() if not v]
@@ -76,19 +72,16 @@ def keyword_density(text: str, keywords: list) -> int:
     for kw in keywords:
         count += sum(1 for w in words if kw in w)
     density = int((count / max(1, len(words))) * 1000)
-    # normalize to 0-100
     return min(100, density // 10)
 
 
-def ats_readiness_score(text: str, sections: dict) -> (int, list):
+def ats_readiness_score(text: str, sections: dict):
     issues = []
     score = 70
-    # Add bonus for key sections
     if sections.get('skills'): score += 10
     if sections.get('experience'): score += 10
     if sections.get('education'): score += 5
 
-    # Check for contact info
     if not extract_email(text) or extract_email(text) == 'Not Found':
         issues.append('Missing email address')
         score -= 15
@@ -96,7 +89,6 @@ def ats_readiness_score(text: str, sections: dict) -> (int, list):
         issues.append('Missing phone number')
         score -= 10
 
-    # Formatting heuristics
     lines = [l for l in text.splitlines() if l.strip()]
     if len(lines) < 10:
         issues.append('Very short resume — may be missing content')
@@ -114,7 +106,6 @@ def extract_skill_list(text: str, skills_db: list = None) -> list:
     for s in skills_db:
         if s in lower:
             found.append(s.title())
-    # De-duplicate and sort by occurrence
     counts = Counter(re.findall(r"\b[\w\+#\-\.]+\b", lower))
     found_sorted = sorted(set(found), key=lambda x: -sum(counts[w] for w in re.findall(r"\\w+", x.lower())))
     return found_sorted
@@ -124,7 +115,6 @@ def analyze_experience(text: str) -> dict:
     years = 0
     companies = 0
     lower = text.lower()
-    # years extraction
     m = re.search(r'(\d+)\+?\s*(?:years?|yrs?)', lower)
     if m:
         try:
@@ -132,12 +122,10 @@ def analyze_experience(text: str) -> dict:
         except:
             years = 0
     else:
-        # heuristic
         if any(k in lower for k in ['senior', 'lead', 'principal']):
             years = max(years, 7)
         elif any(k in lower for k in ['junior', 'entry', 'fresher']):
             years = max(years, 1)
-    # companies heuristic: count ' at ' or ' - ' separators in experience lines
     companies = len(re.findall(r'\bat\b|\bfor\b|\bworked at\b', lower))
     companies = companies if companies > 0 else len(re.findall(r'\n\s*[^\n]+\s*\n', text)) // 6
     return {
@@ -182,7 +170,6 @@ def writing_quality(text: str) -> dict:
     long_sentences = [s for s in sentences if len(s.split()) > 30]
     passive_matches = re.findall(r'\b(is|was|were|be|been|being)\b\s+\w+ed\b', text.lower())
     spelling_issues = 0
-    # simple heuristics
     score = 90 - (len(long_sentences) * 5) - (len(passive_matches) * 5) - spelling_issues
     score = max(0, min(100, int(score)))
     return {
@@ -201,7 +188,6 @@ def formatting_analysis(text: str) -> dict:
         issues.append('Long lines suggest poor line breaks or lack of bullet lists')
     if any(len(l) > 200 for l in lines):
         issues.append('Extremely long lines detected')
-    # Check for many consecutive short lines (sign of columns or two-column layout lost in text extraction)
     short_lines = sum(1 for l in lines if len(l) < 20)
     if short_lines > len(lines) * 0.4:
         issues.append('Many short lines found — possible multi-column layout or contact block')
@@ -213,7 +199,6 @@ def formatting_analysis(text: str) -> dict:
 
 
 def health_and_recommendations(components: dict) -> dict:
-    # Weighted aggregation
     w = {
         'completeness': 0.25,
         'ats': 0.25,
@@ -248,7 +233,6 @@ def health_and_recommendations(components: dict) -> dict:
 
 
 def analyze_resume(file_path: str = None, text: str = None) -> dict:
-    """High level orchestrator that runs the multi-stage analysis and returns a structured report."""
     raw_text = text
     if not raw_text and file_path and os.path.exists(file_path):
         try:
@@ -334,15 +318,17 @@ def analyze_resume(file_path: str = None, text: str = None) -> dict:
 
 
 # -------------------------------
-# NAME EXTRACTION
+# NAME EXTRACTION (without spacy)
 # -------------------------------
 def extract_name(text):
-    doc = nlp(text)
-
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            return ent.text
-
+    """Extract name using regex pattern (first 2-3 capitalized words from top)"""
+    lines = text.split('\n')
+    for line in lines[:5]:  # Check first 5 lines
+        line = line.strip()
+        if line and not any(kw in line.lower() for kw in ['email', 'phone', 'contact', 'resume']):
+            words = line.split()
+            if len(words) >= 2 and all(w[0].isupper() for w in words[:2] if w):
+                return ' '.join(words[:3])
     return "Not Found"
 
 
@@ -351,12 +337,9 @@ def extract_name(text):
 # -------------------------------
 def extract_email(text):
     email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
-
     match = re.search(email_pattern, text)
-
     if match:
         return match.group()
-
     return "Not Found"
 
 
@@ -365,12 +348,9 @@ def extract_email(text):
 # -------------------------------
 def extract_phone(text):
     phone_pattern = r"(\+?\d[\d\s\-]{8,15}\d)"
-
     match = re.search(phone_pattern, text)
-
     if match:
         return match.group()
-
     return "Not Found"
 
 
@@ -378,42 +358,20 @@ def extract_phone(text):
 # SKILLS EXTRACTION
 # -------------------------------
 SKILLS_DB = [
-    "python",
-    "java",
-    "c",
-    "c++",
-    "javascript",
-    "html",
-    "css",
-    "sql",
-    "mysql",
-    "machine learning",
-    "deep learning",
-    "data science",
-    "artificial intelligence",
-    "fastapi",
-    "django",
-    "flask",
-    "react",
-    "nodejs",
-    "git",
-    "github",
-    "aws",
-    "azure",
-    "excel",
-    "power bi"
+    "python", "java", "c", "c++", "javascript", "html", "css",
+    "sql", "mysql", "machine learning", "deep learning", "data science",
+    "artificial intelligence", "fastapi", "django", "flask",
+    "react", "nodejs", "git", "github", "aws", "azure",
+    "excel", "power bi"
 ]
 
 
 def extract_skills(text):
     text = text.lower()
-
     found_skills = []
-
     for skill in SKILLS_DB:
         if skill in text:
             found_skills.append(skill)
-
     return list(set(found_skills))
 
 
@@ -421,128 +379,76 @@ def extract_skills(text):
 # EDUCATION EXTRACTION
 # -------------------------------
 EDUCATION_KEYWORDS = [
-    "b.e",
-    "b.tech",
-    "bachelor",
-    "m.e",
-    "m.tech",
-    "master",
-    "phd",
-    "artificial intelligence and data science",
-    "computer science",
-    "information technology"
+    "b.e", "b.tech", "bachelor", "m.e", "m.tech", "master",
+    "phd", "artificial intelligence and data science",
+    "computer science", "information technology"
 ]
 
 
 def extract_education(text):
     text = text.lower()
-
     education = []
-
     for item in EDUCATION_KEYWORDS:
         if item in text:
             education.append(item)
-
     return list(set(education))
 
 
 # -------------------------------
 # RESUME SCORE
 # -------------------------------
-def calculate_resume_score(
-    skills,
-    education,
-    projects,
-    experience
-):
+def calculate_resume_score(skills, education, projects, experience):
     score = 0
-
     score += len(skills) * 4
     score += len(education) * 10
     score += len(projects) * 10
     score += len(experience) * 15
-
     if score > 100:
         score = 100
-
     return score
+
+
 PROJECT_KEYWORDS = [
-    "project",
-    "resume parser",
-    "chatbot",
-    "portfolio",
-    "attendance system",
-    "management system",
-    "e-commerce",
+    "project", "resume parser", "chatbot", "portfolio",
+    "attendance system", "management system", "e-commerce",
     "web application"
 ]
 
+
 def extract_projects(text):
-
     text = text.lower()
-
     projects = []
-
     for project in PROJECT_KEYWORDS:
         if project in text:
             projects.append(project)
-
     return list(set(projects))
+
+
 EXPERIENCE_KEYWORDS = [
-    "intern",
-    "internship",
-    "software developer",
-    "web developer",
-    "data analyst",
-    "machine learning engineer",
-    "experience"
+    "intern", "internship", "software developer", "web developer",
+    "data analyst", "machine learning engineer", "experience"
 ]
 
+
 def extract_experience(text):
-
     text = text.lower()
-
     experience = []
-
     for item in EXPERIENCE_KEYWORDS:
         if item in text:
             experience.append(item)
-
     return list(set(experience))
-def generate_recommendations(
-    email,
-    phone,
-    skills,
-    education,
-    projects,
-    experience
-):
 
+
+def generate_recommendations(email, phone, skills, education, projects, experience):
     recommendations = []
-
     if phone == "Not Found":
-        recommendations.append(
-            "Add a phone number"
-        )
-
+        recommendations.append("Add a phone number")
     if len(skills) < 5:
-        recommendations.append(
-            "Add more technical skills"
-        )
-
+        recommendations.append("Add more technical skills")
     if len(projects) == 0:
-        recommendations.append(
-            "Add projects section"
-        )
-
+        recommendations.append("Add projects section")
     if len(experience) == 0:
-        recommendations.append(
-            "Add internship or experience details"
-        )
-
+        recommendations.append("Add internship or experience details")
     if len(education) == 0:
-        recommendations.append(
-            "Add education details"
-        )
-
+        recommendations.append("Add education details")
     return recommendations
